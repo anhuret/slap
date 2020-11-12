@@ -1,0 +1,2 @@
+# slap
+Badger DB wrapper
