@@ -1,10 +1,8 @@
 package slap
 
 import (
-	"errors"
 	"reflect"
 	"strconv"
-	"strings"
 
 	"github.com/rs/xid"
 )
@@ -12,9 +10,12 @@ import (
 // Create ...
 func (p *Pivot) Create(data interface{}) ([]string, error) {
 	if reflect.TypeOf(data).Kind() != reflect.Ptr {
-		return nil, errors.New("wrong parameter type")
+		return nil, ErrInvalidParameter
 	}
+
 	var acc []interface{}
+	var ids []string
+
 	if reflect.TypeOf(data).Elem().Kind() != reflect.Slice {
 		acc = append(acc, data)
 	} else {
@@ -24,22 +25,28 @@ func (p *Pivot) Create(data interface{}) ([]string, error) {
 		}
 	}
 
-	var ids []string
 	for _, d := range acc {
 
 		s := model(d)
 		if s == nil {
-			return nil, errors.New("wrong parameter type")
+			return nil, ErrInvalidParameter
 		}
-		x := xid.New().String()
+
+		k := key{
+			schema: p.schema,
+			bucket: s.bucket,
+			id:     xid.New().String(),
+		}
+
 		for f, v := range s.fields {
-			k := strings.Join([]string{p.schema, s.bucket, x, f}, ":")
-			err := put(p.db, k, v)
+			k.field = f
+			err := put(p.db, genKey(&k), v)
 			if err != nil {
 				return nil, err
 			}
 		}
-		ids = append(ids, x)
+
+		ids = append(ids, k.id)
 	}
 
 	return ids, nil
@@ -48,41 +55,50 @@ func (p *Pivot) Create(data interface{}) ([]string, error) {
 func (p *Pivot) Read(data interface{}, ids ...string) ([]interface{}, error) {
 	typ := reflect.TypeOf(data)
 	if typ.Kind() != reflect.Ptr && typ.Elem().Kind() != reflect.Struct {
-		return nil, errors.New("wrong parameter type")
+		return nil, ErrInvalidParameter
 	}
 
 	s := model(data)
-	var result []interface{}
+	if s == nil {
+		return nil, ErrInvalidParameter
+	}
+
+	var rec []interface{}
 
 	for _, id := range ids {
-
 		str := reflect.New(reflect.TypeOf(data).Elem()).Elem()
 
 		for f := range s.fields {
-			k := strings.Join([]string{p.schema, s.bucket, id, f}, ":")
-			res, err := get(p.db, k)
+			k := key{
+				schema: p.schema,
+				bucket: s.bucket,
+				id:     id,
+				field:  f,
+			}
+
+			res, err := get(p.db, genKey(&k))
 			if err != nil {
 				return nil, err
 			}
 
-			fv := str.FieldByName(f)
+			fld := str.FieldByName(f)
 
-			switch fv.Type().Kind() {
+			switch fld.Type().Kind() {
 			case reflect.String:
-				fv.SetString(res)
+				fld.SetString(res)
 			case reflect.Int64:
 				num, err := strconv.Atoi(res)
 				if err != nil {
 					return nil, err
 				}
-				fv.SetInt(int64(num))
+				fld.SetInt(int64(num))
 			default:
-				return nil, errors.New("wrong parameter type")
+				return nil, ErrInvalidParameter
 			}
 		}
 
-		result = append(result, str.Interface())
+		rec = append(rec, str.Interface())
 	}
 
-	return result, nil
+	return rec, nil
 }

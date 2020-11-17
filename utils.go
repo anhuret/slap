@@ -3,7 +3,14 @@ package slap
 import (
 	"fmt"
 	"reflect"
+	"strings"
 )
+
+// Shape ...
+type shape struct {
+	bucket string
+	fields map[string]string
+}
 
 // Model ...
 func model(data interface{}) *shape {
@@ -35,4 +42,16 @@ func model(data interface{}) *shape {
 		bucket: name,
 		fields: fields,
 	}
+}
+
+type key struct {
+	schema string
+	bucket string
+	id     string
+	field  string
+}
+
+func genKey(k *key) string {
+
+	return strings.Join([]string{k.schema, k.bucket, k.id, k.field}, ":")
 }

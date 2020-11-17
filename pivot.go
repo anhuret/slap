@@ -1,22 +1,22 @@
 package slap
 
 import (
+	"errors"
 	"log"
 
 	"github.com/dgraph-io/badger/v2"
 )
-
-// Shape ...
-type shape struct {
-	bucket string
-	fields map[string]string
-}
 
 // Pivot ...
 type Pivot struct {
 	db     *badger.DB
 	schema string
 }
+
+var (
+	// ErrInvalidParameter ...
+	ErrInvalidParameter = errors.New("invalid parameter")
+)
 
 // New ...
 func New(path, schema string) *Pivot {
