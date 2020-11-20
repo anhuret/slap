@@ -1,8 +1,8 @@
 package slap
 
 import (
+	"errors"
 	"reflect"
-	"strconv"
 
 	"github.com/rs/xid"
 )
@@ -27,7 +27,7 @@ func (p *Pivot) Create(data interface{}) ([]string, error) {
 
 	for _, d := range acc {
 
-		s := model(d)
+		s := model(d, true, true)
 		if s == nil {
 			return nil, ErrInvalidParameter
 		}
@@ -38,9 +38,9 @@ func (p *Pivot) Create(data interface{}) ([]string, error) {
 			id:     xid.New().String(),
 		}
 
-		for f, v := range s.fields {
+		for f, t := range s.fields {
 			k.field = f
-			err := put(p.db, genKey(&k), v)
+			err := put(p.db, genKey(&k), toBytes(s.data[f], t))
 			if err != nil {
 				return nil, err
 			}
@@ -52,13 +52,9 @@ func (p *Pivot) Create(data interface{}) ([]string, error) {
 	return ids, nil
 }
 
+// Read ...
 func (p *Pivot) Read(data interface{}, ids ...string) ([]interface{}, error) {
-	typ := reflect.TypeOf(data)
-	if typ.Kind() != reflect.Ptr && typ.Elem().Kind() != reflect.Struct {
-		return nil, ErrInvalidParameter
-	}
-
-	s := model(data)
+	s := model(data, false, true)
 	if s == nil {
 		return nil, ErrInvalidParameter
 	}
@@ -68,7 +64,7 @@ func (p *Pivot) Read(data interface{}, ids ...string) ([]interface{}, error) {
 	for _, id := range ids {
 		str := reflect.New(reflect.TypeOf(data).Elem()).Elem()
 
-		for f := range s.fields {
+		for f, t := range s.fields {
 			k := key{
 				schema: p.schema,
 				bucket: s.bucket,
@@ -83,22 +79,42 @@ func (p *Pivot) Read(data interface{}, ids ...string) ([]interface{}, error) {
 
 			fld := str.FieldByName(f)
 
-			switch fld.Type().Kind() {
-			case reflect.String:
-				fld.SetString(res)
-			case reflect.Int64:
-				num, err := strconv.Atoi(res)
-				if err != nil {
-					return nil, err
-				}
-				fld.SetInt(int64(num))
-			default:
-				return nil, ErrInvalidParameter
+			x := fromBytes(res, t)
+			if x == nil {
+				return nil, errors.New("conversion")
 			}
+			fld.Set(reflect.ValueOf(x))
 		}
-
 		rec = append(rec, str.Interface())
 	}
 
 	return rec, nil
+}
+
+// Update ...
+func (p *Pivot) Update(data interface{}, ids ...string) error {
+	s := model(data, true, false)
+	if s == nil {
+		return ErrInvalidParameter
+	}
+
+	k := key{
+		schema: p.schema,
+		bucket: s.bucket,
+	}
+
+	for _, id := range ids {
+		k.id = id
+
+		for f, t := range s.fields {
+			k.field = f
+
+			err := put(p.db, genKey(&k), toBytes(s.data[f], t))
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }

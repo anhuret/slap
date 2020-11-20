@@ -9,7 +9,7 @@ func TestModel(t *testing.T) {
 	type table struct {
 		Address string
 		Name    string
-		Age     int64
+		Age     int
 	}
 
 	tbl1 := table{
@@ -52,17 +52,48 @@ func TestModel(t *testing.T) {
 
 		id, err := piv.Create(&tbl1)
 		if err != nil {
-			t.Error(err)
+			t.Fatal(err)
+		}
+		if id == nil {
+			t.Fatal("id should not be nil")
 		}
 
 		res, err := piv.Read(&table{}, id...)
 		if err != nil {
-			t.Error(err)
+			t.Fatal(err)
+		}
+		if res == nil {
+			t.Fatal("res should not be nil")
 		}
 
 		a := reflect.DeepEqual(res[0], tbl1)
 		if !a {
 			t.Error("tables must be equal")
+		}
+
+		if res[0].(table).Name != "Ruslan" {
+			t.Error("invalid read field")
+		}
+
+		err = piv.Update(&table{Name: "Jim"}, id[0])
+		if err != nil {
+			t.Error(err)
+		}
+
+		res, err = piv.Read(&table{}, id[0])
+		if err != nil {
+			t.Fatal(err)
+		}
+		if res == nil {
+			t.Fatal("result should not be nil")
+		}
+
+		a = reflect.DeepEqual(res[0], tbl1)
+		if a {
+			t.Error("tables must NOT be equal")
+		}
+		if res[0].(table).Name != "Jim" {
+			t.Error("invalid update field")
 		}
 
 	})
@@ -84,11 +115,11 @@ func TestModel2(t *testing.T) {
 		Age:     46,
 	}
 
-	m := model2(&tbl, true, true)
+	m := model(&tbl, true, true)
 	t.Log(m)
-	m1 := model2(&tbl, false, true)
+	m1 := model(&tbl, false, true)
 	t.Log(m1)
-	m2 := model2(&tbl, false, false)
+	m2 := model(&tbl, false, false)
 	t.Log(m2)
 	s := "Karaganda"
 	v := toBytes(s, reflect.String)

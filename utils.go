@@ -1,57 +1,18 @@
 package slap
 
 import (
-	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
 )
 
-// Shape ...
 type shape struct {
-	bucket string
-	fields map[string]string
-}
-
-type shape2 struct {
 	bucket string
 	fields map[string]reflect.Kind
 	data   map[string]interface{}
 }
 
-// Model ...
-func model(data interface{}) *shape {
-	var res reflect.Value
-	var name string
-	fields := make(map[string]string)
-
-	typ := reflect.TypeOf(data)
-	val := reflect.ValueOf(data)
-
-	switch {
-	case typ.Kind() == reflect.Ptr && typ.Elem().Kind() == reflect.Struct:
-		res = val.Elem()
-		name = typ.Elem().Name()
-	case typ.Kind() == reflect.Struct:
-		res = val
-		name = typ.Name()
-	default:
-		return nil
-	}
-
-	for i := 0; i < res.NumField(); i++ {
-		n := res.Type().Field(i).Name
-		v := fmt.Sprintf("%v", res.Field(i).Interface())
-		fields[n] = v
-	}
-
-	return &shape{
-		bucket: name,
-		fields: fields,
-	}
-}
-
-func model2(x interface{}, d bool, z bool) *shape2 {
+func model(x interface{}, d bool, z bool) *shape {
 	val := reflect.ValueOf(x)
 
 	switch {
@@ -75,7 +36,7 @@ func model2(x interface{}, d bool, z bool) *shape2 {
 		fields[val.Type().Field(i).Name] = val.Field(i).Kind()
 	}
 
-	s := shape2{
+	s := shape{
 		bucket: val.Type().Name(),
 		fields: fields,
 		data:   nil,
