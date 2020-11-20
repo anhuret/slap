@@ -1,8 +1,8 @@
 package slap
 
 import (
-	"errors"
 	"reflect"
+	"strings"
 
 	"github.com/rs/xid"
 )
@@ -39,10 +39,22 @@ func (p *Pivot) Create(data interface{}) ([]string, error) {
 		}
 
 		for f, t := range s.fields {
+			if f == "ID" {
+				continue
+			}
 			k.field = f
 			err := put(p.db, genKey(&k), toBytes(s.data[f], t))
 			if err != nil {
 				return nil, err
+			}
+			if strings.HasSuffix(f, "ID") {
+				if t != reflect.String {
+					return nil, ErrInvalidParameter
+				}
+				err = p.index(&k, s.data[f].(string))
+				if err != nil {
+					return nil, err
+				}
 			}
 		}
 
@@ -81,7 +93,7 @@ func (p *Pivot) Read(data interface{}, ids ...string) ([]interface{}, error) {
 
 			x := fromBytes(res, t)
 			if x == nil {
-				return nil, errors.New("conversion")
+				return nil, ErrTypeConversion
 			}
 			fld.Set(reflect.ValueOf(x))
 		}
