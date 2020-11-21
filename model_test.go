@@ -8,7 +8,7 @@ import (
 func TestModel(t *testing.T) {
 	type table struct {
 		Address string
-		Name    string
+		Name    string `slap:"index"`
 		Age     int
 	}
 

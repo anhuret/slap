@@ -2,7 +2,6 @@ package slap
 
 import (
 	"reflect"
-	"strings"
 
 	"github.com/rs/xid"
 )
@@ -26,8 +25,7 @@ func (p *Pivot) Create(data interface{}) ([]string, error) {
 	}
 
 	for _, d := range acc {
-
-		s := model(d, true, true)
+		s := model(d, true, false)
 		if s == nil {
 			return nil, ErrInvalidParameter
 		}
@@ -42,19 +40,12 @@ func (p *Pivot) Create(data interface{}) ([]string, error) {
 			if f == "ID" {
 				continue
 			}
+			_, k.index = s.index[f]
 			k.field = f
-			err := put(p.db, genKey(&k), toBytes(s.data[f], t))
+
+			err := put(p.db, &k, toBytes(s.data[f], t))
 			if err != nil {
 				return nil, err
-			}
-			if strings.HasSuffix(f, "ID") {
-				if t != reflect.String {
-					return nil, ErrInvalidParameter
-				}
-				err = p.index(&k, s.data[f].(string))
-				if err != nil {
-					return nil, err
-				}
 			}
 		}
 
@@ -62,6 +53,38 @@ func (p *Pivot) Create(data interface{}) ([]string, error) {
 	}
 
 	return ids, nil
+}
+
+// Update ...
+func (p *Pivot) Update(data interface{}, ids ...string) error {
+	s := model(data, true, false)
+	if s == nil {
+		return ErrInvalidParameter
+	}
+
+	k := key{
+		schema: p.schema,
+		bucket: s.bucket,
+	}
+
+	for _, id := range ids {
+		k.id = id
+
+		for f, t := range s.fields {
+			if f == "ID" {
+				continue
+			}
+			_, k.index = s.index[f]
+			k.field = f
+
+			err := put(p.db, &k, toBytes(s.data[f], t))
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 // Read ...
@@ -101,32 +124,4 @@ func (p *Pivot) Read(data interface{}, ids ...string) ([]interface{}, error) {
 	}
 
 	return rec, nil
-}
-
-// Update ...
-func (p *Pivot) Update(data interface{}, ids ...string) error {
-	s := model(data, true, false)
-	if s == nil {
-		return ErrInvalidParameter
-	}
-
-	k := key{
-		schema: p.schema,
-		bucket: s.bucket,
-	}
-
-	for _, id := range ids {
-		k.id = id
-
-		for f, t := range s.fields {
-			k.field = f
-
-			err := put(p.db, genKey(&k), toBytes(s.data[f], t))
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
 }

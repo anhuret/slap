@@ -3,7 +3,6 @@ package slap
 import (
 	"errors"
 	"log"
-	"strings"
 
 	"github.com/dgraph-io/badger/v2"
 )
@@ -14,6 +13,8 @@ type Pivot struct {
 	schema string
 }
 
+type null struct{}
+
 var (
 	// ErrInvalidParameter ...
 	ErrInvalidParameter = errors.New("invalid parameter")
@@ -21,6 +22,11 @@ var (
 	ErrTypeConversion = errors.New("type conversion")
 	// ErrNoRecord ...
 	ErrNoRecord = errors.New("record does not exist")
+	void        null
+)
+
+const (
+	_indexSchema string = "system.index"
 )
 
 // New ...
@@ -38,14 +44,4 @@ func New(path, schema string) *Pivot {
 // Tidy ...
 func (p *Pivot) Tidy() {
 	p.db.Close()
-}
-
-func (p *Pivot) index(k *key, value string) error {
-	k.schema = "system.index"
-	s := strings.Join([]string{k.schema, k.bucket, k.field, value, k.id}, ":")
-	err := put(p.db, s, []byte{0})
-	if err != nil {
-		return err
-	}
-	return nil
 }

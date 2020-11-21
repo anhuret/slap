@@ -9,6 +9,7 @@ import (
 type shape struct {
 	bucket string
 	fields map[string]reflect.Kind
+	index  map[string]null
 	data   map[string]interface{}
 }
 
@@ -24,21 +25,23 @@ func model(x interface{}, d bool, z bool) *shape {
 	}
 
 	fields := make(map[string]reflect.Kind)
+	index := make(map[string]null)
 
 	for i := 0; i < val.NumField(); i++ {
-		if z {
-			fields[val.Type().Field(i).Name] = val.Field(i).Kind()
+		if !z && val.Field(i).IsZero() {
 			continue
 		}
-		if val.Field(i).IsZero() {
-			continue
+		ft := val.Type().Field(i)
+		fields[ft.Name] = val.Field(i).Kind()
+		if ft.Tag.Get("slap") == "index" {
+			index[ft.Name] = void
 		}
-		fields[val.Type().Field(i).Name] = val.Field(i).Kind()
 	}
 
 	s := shape{
 		bucket: val.Type().Name(),
 		fields: fields,
+		index:  index,
 		data:   nil,
 	}
 
@@ -58,6 +61,7 @@ type key struct {
 	bucket string
 	id     string
 	field  string
+	index  bool
 }
 
 func genKey(k *key) string {
