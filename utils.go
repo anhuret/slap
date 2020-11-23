@@ -1,6 +1,8 @@
 package slap
 
 import (
+	"bytes"
+	"encoding/gob"
 	"reflect"
 	"strconv"
 	"strings"
@@ -108,5 +110,28 @@ func fromBytes(b []byte, t reflect.Kind) interface{} {
 	default:
 		return nil
 	}
+
+}
+
+func toBytes2(x interface{}) ([]byte, error) {
+	var bts bytes.Buffer
+	enc := gob.NewEncoder(&bts)
+
+	err := enc.Encode(x)
+	if err != nil {
+		return nil, err
+	}
+	return bts.Bytes(), nil
+
+}
+func fromBytes2(bts []byte) (interface{}, error) {
+	buf := bytes.NewReader(bts)
+	dec := gob.NewDecoder(buf)
+	var x interface{}
+	err := dec.Decode(&x)
+	if err != nil {
+		return nil, err
+	}
+	return x, nil
 
 }

@@ -36,14 +36,18 @@ func (p *Pivot) Create(data interface{}) ([]string, error) {
 			id:     xid.New().String(),
 		}
 
-		for f, t := range s.fields {
+		for f := range s.fields {
 			if f == "ID" {
 				continue
 			}
 			_, k.index = s.index[f]
 			k.field = f
-
-			err := put(p.db, &k, toBytes(s.data[f], t))
+			bts, err := toBytes2(s.data[f])
+			if err != nil {
+				return nil, err
+			}
+			//toBytes(s.data[f], t)
+			err = put(p.db, &k, bts)
 			if err != nil {
 				return nil, err
 			}
@@ -70,14 +74,18 @@ func (p *Pivot) Update(data interface{}, ids ...string) error {
 	for _, id := range ids {
 		k.id = id
 
-		for f, t := range s.fields {
+		for f := range s.fields {
 			if f == "ID" {
 				continue
 			}
 			_, k.index = s.index[f]
 			k.field = f
 
-			err := put(p.db, &k, toBytes(s.data[f], t))
+			bts, err := toBytes2(s.data[f])
+			if err != nil {
+				return err
+			}
+			err = put(p.db, &k, bts)
 			if err != nil {
 				return err
 			}
@@ -99,7 +107,7 @@ func (p *Pivot) Read(data interface{}, ids ...string) ([]interface{}, error) {
 	for _, id := range ids {
 		str := reflect.New(reflect.TypeOf(data).Elem()).Elem()
 
-		for f, t := range s.fields {
+		for f := range s.fields {
 			k := key{
 				schema: p.schema,
 				bucket: s.bucket,
@@ -114,9 +122,14 @@ func (p *Pivot) Read(data interface{}, ids ...string) ([]interface{}, error) {
 
 			fld := str.FieldByName(f)
 
-			x := fromBytes(res, t)
-			if x == nil {
-				return nil, ErrTypeConversion
+			//x := fromBytes(res, t)
+			//if x == nil {
+			//return nil, ErrTypeConversion
+			//}
+
+			x, err := fromBytes2(res)
+			if err != nil {
+				return nil, err
 			}
 			fld.Set(reflect.ValueOf(x))
 		}
