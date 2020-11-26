@@ -26,6 +26,7 @@ func TestCrud(t *testing.T) {
 	defer piv.Tidy()
 
 	sl := []table{tbl1, tbl2}
+	ws := []string{"one", "two"}
 	var err error
 	_, err = piv.Create(&tbl1)
 	if err != nil {
@@ -36,6 +37,14 @@ func TestCrud(t *testing.T) {
 		t.Error("must return error")
 	}
 	_, err = piv.Create(sl)
+	if err == nil {
+		t.Error("must return error")
+	}
+	_, err = piv.Create(ws)
+	if err == nil {
+		t.Error("must return error")
+	}
+	_, err = piv.Create(&ws)
 	if err == nil {
 		t.Error("must return error")
 	}

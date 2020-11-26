@@ -124,17 +124,12 @@ func (p *Pivot) Read(data interface{}, ids ...string) ([]interface{}, error) {
 				field:  f,
 			}
 
-			res, err := get(p.db, genKey(&k))
+			res, err := get(p.db, k.out())
 			if err != nil {
 				return nil, err
 			}
 
 			fld := str.FieldByName(f)
-
-			//x := fromBytes(res, t)
-			//if x == nil {
-			//return nil, ErrTypeConversion
-			//}
 
 			x, err := fromBytes(res, t)
 			if err != nil {

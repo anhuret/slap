@@ -1,8 +1,6 @@
 package slap
 
 import (
-	"strings"
-
 	"github.com/dgraph-io/badger/v2"
 )
 
@@ -15,7 +13,7 @@ func initDB(path string) (*badger.DB, error) {
 }
 
 func put(db *badger.DB, k *key, value []byte) error {
-	dks := strings.Join([]string{k.schema, k.bucket, k.id, k.field}, ":")
+	dks := k.out()
 
 	err := db.Update(func(txn *badger.Txn) error {
 		if k.index {
@@ -29,14 +27,13 @@ func put(db *badger.DB, k *key, value []byte) error {
 					return err
 				}
 
-				oi := strings.Join([]string{_indexSchema, k.bucket, k.field, string(ov), k.id}, ":")
-				err = txn.Delete([]byte(oi))
+				err = txn.Delete([]byte(k.inx(ov)))
 				if err != nil {
 					return err
 				}
 			}
-			ni := strings.Join([]string{_indexSchema, k.bucket, k.field, string(value), k.id}, ":")
-			err = txn.Set([]byte(ni), []byte{0})
+
+			err = txn.Set([]byte(k.inx(value)), []byte{0})
 			if err != nil {
 				return err
 			}

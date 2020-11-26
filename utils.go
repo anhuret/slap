@@ -67,8 +67,12 @@ type key struct {
 	index  bool
 }
 
-func genKey(k *key) string {
+func (k *key) out() string {
 	return strings.Join([]string{k.schema, k.bucket, k.id, k.field}, ":")
+}
+
+func (k *key) inx(v []byte) string {
+	return strings.Join([]string{_indexSchema, k.bucket, k.field, string(v), k.id}, ":")
 }
 
 func toBytes(x interface{}) ([]byte, error) {
