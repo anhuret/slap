@@ -24,10 +24,15 @@ func (p *Pivot) Create(data interface{}) ([]string, error) {
 		}
 	}
 
+	s := model(acc[0], false)
+	if s == nil {
+		return nil, ErrInvalidParameter
+	}
+
 	for _, d := range acc {
-		s := model(d, true, false)
-		if s == nil {
-			return nil, ErrInvalidParameter
+		v := s.values(d)
+		if v == nil {
+			return nil, ErrTypeConversion
 		}
 
 		k := key{
@@ -42,11 +47,11 @@ func (p *Pivot) Create(data interface{}) ([]string, error) {
 			}
 			_, k.index = s.index[f]
 			k.field = f
-			bts, err := toBytes(s.data[f])
+
+			bts, err := toBytes(v[f])
 			if err != nil {
 				return nil, err
 			}
-			//toBytes(s.data[f], t)
 			err = put(p.db, &k, bts)
 			if err != nil {
 				return nil, err
@@ -61,9 +66,13 @@ func (p *Pivot) Create(data interface{}) ([]string, error) {
 
 // Update ...
 func (p *Pivot) Update(data interface{}, ids ...string) error {
-	s := model(data, true, false)
+	s := model(data, false)
 	if s == nil {
 		return ErrInvalidParameter
+	}
+	v := s.values(data)
+	if v == nil {
+		return ErrTypeConversion
 	}
 
 	k := key{
@@ -81,7 +90,7 @@ func (p *Pivot) Update(data interface{}, ids ...string) error {
 			_, k.index = s.index[f]
 			k.field = f
 
-			bts, err := toBytes(s.data[f])
+			bts, err := toBytes(v[f])
 			if err != nil {
 				return err
 			}
@@ -97,7 +106,7 @@ func (p *Pivot) Update(data interface{}, ids ...string) error {
 
 // Read ...
 func (p *Pivot) Read(data interface{}, ids ...string) ([]interface{}, error) {
-	s := model(data, false, true)
+	s := model(data, true)
 	if s == nil {
 		return nil, ErrInvalidParameter
 	}

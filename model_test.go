@@ -166,6 +166,7 @@ func TestEncoding(t *testing.T) {
 func TestModel(t *testing.T) {
 	type some struct {
 		Address  string
+		Name     string
 		Universe int64
 		Age      int
 		Life     bool
@@ -182,16 +183,33 @@ func TestModel(t *testing.T) {
 		Money:    32.42,
 	}
 
-	m := model(&tbl, true, true)
+	m := model(&tbl, true)
 	if m == nil {
 		t.Error("should not be nil")
 	}
-	m = model(&tbl, false, true)
+	v := m.values(&tbl)
+	if v == nil {
+		t.Error("should not be nil")
+	}
+	if v["Address"].(string) != "St Leonards" {
+		t.Error("value conversion")
+	}
+	if v["Money"].(float64) != 32.42 {
+		t.Error("value conversion")
+	}
+	if v["Name"].(string) != "" {
+		t.Error("value conversion")
+	}
+
+	m = model(&tbl, false)
 	if m == nil {
 		t.Error("should not be nil")
 	}
-	m = model(&tbl, false, false)
-	if m == nil {
+	v = m.values(&tbl)
+	if v == nil {
 		t.Error("should not be nil")
+	}
+	if _, ok := v["Name"]; ok {
+		t.Error("zero value present")
 	}
 }

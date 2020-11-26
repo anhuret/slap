@@ -11,10 +11,9 @@ type shape struct {
 	bucket string
 	fields map[string]reflect.Kind
 	index  map[string]null
-	data   map[string]interface{}
 }
 
-func model(x interface{}, d bool, z bool) *shape {
+func model(x interface{}, z bool) *shape {
 	val := reflect.ValueOf(x)
 
 	switch {
@@ -43,18 +42,21 @@ func model(x interface{}, d bool, z bool) *shape {
 		bucket: val.Type().Name(),
 		fields: fields,
 		index:  index,
-		data:   nil,
-	}
-
-	if d {
-		data := make(map[string]interface{})
-		for f := range s.fields {
-			data[f] = val.FieldByName(f).Interface()
-		}
-		s.data = data
 	}
 
 	return &s
+}
+
+func (s *shape) values(x interface{}) map[string]interface{} {
+	val := reflect.Indirect(reflect.ValueOf(x))
+	dta := make(map[string]interface{})
+
+	for f := range s.fields {
+		int := val.FieldByName(f).Interface()
+		dta[f] = int
+	}
+
+	return dta
 }
 
 type key struct {
