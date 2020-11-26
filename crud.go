@@ -42,7 +42,7 @@ func (p *Pivot) Create(data interface{}) ([]string, error) {
 			}
 			_, k.index = s.index[f]
 			k.field = f
-			bts, err := toBytes2(s.data[f])
+			bts, err := toBytes(s.data[f])
 			if err != nil {
 				return nil, err
 			}
@@ -81,7 +81,7 @@ func (p *Pivot) Update(data interface{}, ids ...string) error {
 			_, k.index = s.index[f]
 			k.field = f
 
-			bts, err := toBytes2(s.data[f])
+			bts, err := toBytes(s.data[f])
 			if err != nil {
 				return err
 			}
@@ -107,7 +107,7 @@ func (p *Pivot) Read(data interface{}, ids ...string) ([]interface{}, error) {
 	for _, id := range ids {
 		str := reflect.New(reflect.TypeOf(data).Elem()).Elem()
 
-		for f := range s.fields {
+		for f, t := range s.fields {
 			k := key{
 				schema: p.schema,
 				bucket: s.bucket,
@@ -127,7 +127,7 @@ func (p *Pivot) Read(data interface{}, ids ...string) ([]interface{}, error) {
 			//return nil, ErrTypeConversion
 			//}
 
-			x, err := fromBytes2(res)
+			x, err := fromBytes(res, t)
 			if err != nil {
 				return nil, err
 			}

@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestModel(t *testing.T) {
+func TestCrud(t *testing.T) {
 	type table struct {
 		Address string
 		Name    string `slap:"index"`
@@ -100,49 +100,98 @@ func TestModel(t *testing.T) {
 
 }
 
-func TestModel2(t *testing.T) {
+func TestEncoding(t *testing.T) {
+	ss := "Hello, World"
+	v, err := toBytes(ss)
+	if err != nil {
+		t.Error(err)
+	}
+	r, err := fromBytes(v, reflect.String)
+	if err != nil {
+		t.Error(err)
+	}
+	if ss != r.(string) {
+		t.Error("invalid conversion")
+	}
+	si := 42
+	v, err = toBytes(si)
+	if err != nil {
+		t.Error(err)
+	}
+	r, err = fromBytes(v, reflect.Int)
+	if err != nil {
+		t.Error(err)
+	}
+	if si != r.(int) {
+		t.Error("invalid conversion")
+	}
+	bl := true
+	v, err = toBytes(bl)
+	if err != nil {
+		t.Error(err)
+	}
+	r, err = fromBytes(v, reflect.Bool)
+	if err != nil {
+		t.Error(err)
+	}
+	if bl != r.(bool) {
+		t.Error("invalid conversion")
+	}
+	bs := []byte("some bytes")
+	v, err = toBytes(bs)
+	if err != nil {
+		t.Error(err)
+	}
+	r, err = fromBytes(v, reflect.Slice)
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(bs, r.([]byte)) {
+		t.Error("invalid conversion")
+	}
+	fl := 32.54
+	v, err = toBytes(fl)
+	if err != nil {
+		t.Error(err)
+	}
+	r, err = fromBytes(v, reflect.Float64)
+	if err != nil {
+		t.Error(err)
+	}
+	if fl != r.(float64) {
+		t.Error("invalid conversion")
+	}
+}
+
+func TestModel(t *testing.T) {
 	type some struct {
-		Address string
-		Name    string
-		Age     int
-		Life    string
-		Range   []byte
+		Address  string
+		Universe int64
+		Age      int
+		Life     bool
+		Range    []byte
+		Money    float64
 	}
 
 	tbl := some{
-		Address: "St Leonards",
-		Name:    "Ruslan",
-		Age:     46,
+		Address:  "St Leonards",
+		Universe: 1000,
+		Age:      46,
+		Life:     true,
+		Range:    []byte("random bytes"),
+		Money:    32.42,
 	}
 
 	m := model(&tbl, true, true)
-	t.Log(m)
-	m1 := model(&tbl, false, true)
-	t.Log(m1)
-	m2 := model(&tbl, false, false)
-	t.Log(m2)
-	s := "Karaganda"
-	v := toBytes(s, reflect.String)
-	r := fromBytes(v, reflect.String)
-	if s != r.(string) {
-		t.Error("invalid conversion")
+	if m == nil {
+		t.Error("should not be nil")
 	}
-	s2 := 42
-	v = toBytes(s2, reflect.Int)
-	r = fromBytes(v, reflect.Int)
-	if s2 != r.(int) {
-		t.Error("invalid conversion")
+	m = model(&tbl, false, true)
+	if m == nil {
+		t.Error("should not be nil")
 	}
-	s3 := true
-	v = toBytes(s3, reflect.Bool)
-	r = fromBytes(v, reflect.Bool)
-	if s3 != r.(bool) {
-		t.Error("invalid conversion")
-	}
-	s4 := []byte("string")
-	v = toBytes(s4, reflect.Slice)
-	r = fromBytes(v, reflect.Slice)
-	if !reflect.DeepEqual(s4, r.([]byte)) {
-		t.Error("invalid conversion")
+	m = model(&tbl, false, false)
+	if m == nil {
+		t.Error("should not be nil")
 	}
 }

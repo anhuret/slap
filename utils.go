@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/gob"
 	"reflect"
-	"strconv"
 	"strings"
 )
 
@@ -70,50 +69,7 @@ func genKey(k *key) string {
 	return strings.Join([]string{k.schema, k.bucket, k.id, k.field}, ":")
 }
 
-func toBytes(x interface{}, t reflect.Kind) []byte {
-	switch t {
-	case reflect.String:
-		return []byte(x.(string))
-	case reflect.Int:
-		return []byte(strconv.Itoa(x.(int)))
-	case reflect.Bool:
-		b := "f"
-		if x.(bool) {
-			b = "t"
-		}
-		return []byte(b)
-	case reflect.Slice:
-		return x.([]byte)
-	default:
-		return nil
-	}
-}
-
-func fromBytes(b []byte, t reflect.Kind) interface{} {
-	switch t {
-	case reflect.String:
-		return string(b)
-	case reflect.Int:
-		i, err := strconv.Atoi(string(b))
-		if err != nil {
-			return nil
-		}
-		return i
-	case reflect.Bool:
-		s := string(b)
-		if s == "t" {
-			return true
-		}
-		return false
-	case reflect.Slice:
-		return b
-	default:
-		return nil
-	}
-
-}
-
-func toBytes2(x interface{}) ([]byte, error) {
+func toBytes(x interface{}) ([]byte, error) {
 	var bts bytes.Buffer
 	enc := gob.NewEncoder(&bts)
 
@@ -124,14 +80,54 @@ func toBytes2(x interface{}) ([]byte, error) {
 	return bts.Bytes(), nil
 
 }
-func fromBytes2(bts []byte) (interface{}, error) {
+func fromBytes(bts []byte, t reflect.Kind) (interface{}, error) {
 	buf := bytes.NewReader(bts)
 	dec := gob.NewDecoder(buf)
-	var x interface{}
-	err := dec.Decode(&x)
-	if err != nil {
-		return nil, err
-	}
-	return x, nil
 
+	switch t {
+	case reflect.String:
+		var x string
+		err := dec.Decode(&x)
+		if err != nil {
+			return nil, err
+		}
+		return x, nil
+	case reflect.Int:
+		var x int
+		err := dec.Decode(&x)
+		if err != nil {
+			return nil, err
+		}
+		return x, nil
+	case reflect.Int64:
+		var x int64
+		err := dec.Decode(&x)
+		if err != nil {
+			return nil, err
+		}
+		return x, nil
+	case reflect.Float64:
+		var x float64
+		err := dec.Decode(&x)
+		if err != nil {
+			return nil, err
+		}
+		return x, nil
+	case reflect.Slice:
+		var x []byte
+		err := dec.Decode(&x)
+		if err != nil {
+			return nil, err
+		}
+		return x, nil
+	case reflect.Bool:
+		var x bool
+		err := dec.Decode(&x)
+		if err != nil {
+			return nil, err
+		}
+		return x, nil
+	default:
+		return nil, ErrInvalidParameter
+	}
 }
