@@ -4,6 +4,19 @@ import (
 	"github.com/dgraph-io/badger/v2"
 )
 
+// DB ...
+type DB struct {
+	*badger.DB
+}
+
+func newDB(path string) (*DB, error) {
+	db, err := badger.Open(badger.DefaultOptions(path))
+	if err != nil {
+		return nil, err
+	}
+	return &DB{db}, nil
+}
+
 func initDB(path string) (*badger.DB, error) {
 	db, err := badger.Open(badger.DefaultOptions(path))
 	if err != nil {
@@ -68,4 +81,21 @@ func get(db *badger.DB, key string) ([]byte, error) {
 		return nil, err
 	}
 	return value, nil
+}
+
+func scan(db *badger.DB, stub string) []string {
+	var acc []string
+	db.View(func(txn *badger.Txn) error {
+		ops := badger.DefaultIteratorOptions
+		ops.PrefetchValues = false
+		itr := txn.NewIterator(ops)
+		defer itr.Close()
+		pfx := []byte(stub)
+		for itr.Seek(pfx); itr.ValidForPrefix(pfx); itr.Next() {
+			acc = append(acc, string(itr.Item().Key()))
+		}
+		return nil
+	})
+
+	return acc
 }

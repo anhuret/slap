@@ -2,7 +2,9 @@ package slap
 
 import (
 	"reflect"
+	"strings"
 
+	"github.com/anhuret/gset"
 	"github.com/rs/xid"
 )
 
@@ -141,4 +143,47 @@ func (p *Pivot) Read(data interface{}, ids ...string) ([]interface{}, error) {
 	}
 
 	return rec, nil
+}
+
+func (p *Pivot) where(x interface{}) ([]string, error) {
+	s := model(x, false)
+	if s == nil {
+		return nil, ErrInvalidParameter
+	}
+	v := s.values(x)
+	if v == nil {
+		return nil, ErrTypeConversion
+	}
+
+	k := key{
+		schema: p.schema,
+		bucket: s.bucket,
+	}
+
+	var acc []*gset.Set
+
+	for f := range s.fields {
+		k.field = f
+
+		bts, err := toBytes(v[f])
+		if err != nil {
+			return nil, err
+		}
+
+		stub := strings.Join([]string{_indexSchema, k.bucket, k.field, string(bts), ""}, ":")
+		res := scan(p.db, stub)
+		set := gset.New()
+		for _, i := range res {
+
+			r := strings.Split(i, ":")
+			set.Add(r[len(r)-1])
+		}
+
+		acc = append(acc, set)
+	}
+	ns := gset.New()
+	rs := ns.Union(acc...)
+	sl := rs.ToSlice()
+
+	return sl, nil
 }

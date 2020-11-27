@@ -222,3 +222,57 @@ func TestModel(t *testing.T) {
 		t.Error("zero value present")
 	}
 }
+
+func TestIndex(t *testing.T) {
+	type table struct {
+		Address string
+		Name    string `slap:"index"`
+		Age     int
+	}
+
+	tbl1 := table{
+		Address: "St Leonards",
+		Name:    "Ruslan",
+		Age:     46,
+	}
+	tbl2 := table{
+		Address: "Romsey",
+		Name:    "Sasha",
+		Age:     9,
+	}
+	tbl3 := table{
+		Address: "Church",
+		Name:    "Olya",
+		Age:     35,
+	}
+	piv := New("/tmp/badger", "sparkle")
+	piv.db.DropAll()
+	defer piv.Tidy()
+
+	sl := []table{tbl1, tbl2, tbl3}
+
+	var err error
+	_, err = piv.Create(&sl)
+	if err != nil {
+		t.Error(err)
+	}
+
+	res, err := piv.where(table{Name: "Ruslan"})
+
+	rd, err := piv.Read(&table{}, res...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rd == nil {
+		t.Fatal("res should not be nil")
+	}
+
+	a := reflect.DeepEqual(rd[0], tbl1)
+	if !a {
+		t.Error("tables must be equal")
+	}
+
+	if rd[0].(table).Name != "Ruslan" {
+		t.Error("invalid read field")
+	}
+}
