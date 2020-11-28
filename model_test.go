@@ -276,3 +276,53 @@ func TestIndex(t *testing.T) {
 		t.Error("invalid read field")
 	}
 }
+
+func TestSelect(t *testing.T) {
+	type table struct {
+		Address string `slap:"index"`
+		Name    string `slap:"index"`
+		Age     int    `slap:"index"`
+	}
+
+	tbl1 := table{
+		Address: "Romsey",
+		Name:    "Ruslan",
+		Age:     46,
+	}
+	tbl2 := table{
+		Address: "Romsey",
+		Name:    "Sasha",
+		Age:     9,
+	}
+	tbl3 := table{
+		Address: "Church",
+		Name:    "Olya",
+		Age:     35,
+	}
+	piv := New("/tmp/badger", "sparkle")
+	piv.db.DropAll()
+	defer piv.Tidy()
+
+	sl := []table{tbl1, tbl2, tbl3}
+
+	var err error
+	ids, err := piv.Create(&sl)
+	if err != nil {
+		t.Error(err)
+	}
+
+	t.Log("IDS: ", ids)
+
+	res, err := piv.Select(&table{Address: "Romsey"})
+	t.Log("RESULT: ", res)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res == nil {
+		t.Fatal("res should not be nil")
+	}
+	if len(res) != 2 {
+		t.Fatal("res should have 2 elements")
+	}
+
+}

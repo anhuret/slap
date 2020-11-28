@@ -1,6 +1,7 @@
 package slap
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 
@@ -173,17 +174,31 @@ func (p *Pivot) where(x interface{}) ([]string, error) {
 		stub := strings.Join([]string{_indexSchema, k.bucket, k.field, string(bts), ""}, ":")
 		res := scan(p.db, stub)
 		set := gset.New()
-		for _, i := range res {
-
-			r := strings.Split(i, ":")
-			set.Add(r[len(r)-1])
+		for _, k := range res {
+			i := strings.Split(k, ":")
+			set.Add(i[len(i)-1])
 		}
 
 		acc = append(acc, set)
 	}
-	ns := gset.New()
-	rs := ns.Union(acc...)
-	sl := rs.ToSlice()
 
-	return sl, nil
+	return gset.New().Union(acc...).ToSlice(), nil
+}
+
+// Select ...
+func (p *Pivot) Select(x interface{}) ([]interface{}, error) {
+	val := reflect.Indirect(reflect.ValueOf(x)).Interface()
+	ids, err := p.where(val)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println("SELECT IDS: ", ids)
+
+	obs, err := p.Read(x, ids...)
+	if err != nil {
+		return nil, err
+	}
+
+	return obs, nil
 }
