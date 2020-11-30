@@ -18,7 +18,9 @@ func newDB(path string) (*DB, error) {
 }
 
 func initDB(path string) (*badger.DB, error) {
-	db, err := badger.Open(badger.DefaultOptions(path))
+	ops := badger.DefaultOptions(path)
+	ops.Logger = nil
+	db, err := badger.Open(ops)
 	if err != nil {
 		return nil, err
 	}

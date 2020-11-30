@@ -1,7 +1,6 @@
 package slap
 
 import (
-	"fmt"
 	"reflect"
 	"strings"
 
@@ -182,7 +181,14 @@ func (p *Pivot) where(x interface{}) ([]string, error) {
 		acc = append(acc, set)
 	}
 
-	return gset.New().Union(acc...).ToSlice(), nil
+	switch len(acc) {
+	case 1:
+		return acc[0].ToSlice(), nil
+	case 0:
+		return []string{}, nil
+	default:
+		return acc[0].Intersect(acc[1:]...).ToSlice(), nil
+	}
 }
 
 // Select ...
@@ -192,8 +198,6 @@ func (p *Pivot) Select(x interface{}) ([]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	fmt.Println("SELECT IDS: ", ids)
 
 	obs, err := p.Read(x, ids...)
 	if err != nil {

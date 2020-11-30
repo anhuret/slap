@@ -6,58 +6,96 @@ import (
 )
 
 func TestCrud(t *testing.T) {
-	type table struct {
-		Address string
-		Name    string `slap:"index"`
-		Age     int
+	type some struct {
+		Address  string `slap:"index"`
+		Name     string
+		Universe int64
+		Age      int `slap:"index"`
+		Life     bool
+		Range    []byte
+		Money    float64 `slap:"index"`
 	}
 
-	tbl1 := table{
-		Address: "St Leonards",
-		Name:    "Ruslan",
-		Age:     46,
+	tbl1 := some{
+		Address:  "St Leonards",
+		Name:     "Jim",
+		Universe: 424242,
+		Age:      60,
+		Life:     true,
+		Range:    []byte("some bytes"),
+		Money:    32.42,
 	}
-	tbl2 := table{
-		Address: "Romsey",
-		Name:    "Sasha",
-		Age:     9,
+
+	tbl2 := some{
+		Address:  "St Leonards",
+		Name:     "Tom",
+		Universe: 999,
+		Age:      46,
+		Life:     true,
+		Range:    []byte("some bytes"),
+		Money:    36.06,
 	}
+
+	tbl3 := some{
+		Address:  "Jersey St",
+		Universe: 1000,
+		Age:      25,
+		Life:     false,
+		Range:    []byte("more bytes"),
+		Money:    0.42,
+	}
+
+	tbl4 := some{
+		Address:  "Romsey St",
+		Universe: 1001,
+		Age:      46,
+		Life:     true,
+		Range:    []byte("if any bytes"),
+		Money:    100.01,
+	}
+
 	piv := New("/tmp/badger", "sparkle")
-	defer piv.Tidy()
+	defer piv.db.Close()
 
-	sl := []table{tbl1, tbl2}
+	sl := []some{tbl1, tbl2, tbl3, tbl4}
 	ws := []string{"one", "two"}
 	var err error
-	_, err = piv.Create(&tbl1)
-	if err != nil {
-		t.Error(err)
-	}
-	_, err = piv.Create(tbl1)
-	if err == nil {
-		t.Error("must return error")
-	}
-	_, err = piv.Create(sl)
-	if err == nil {
-		t.Error("must return error")
-	}
-	_, err = piv.Create(ws)
-	if err == nil {
-		t.Error("must return error")
-	}
-	_, err = piv.Create(&ws)
-	if err == nil {
-		t.Error("must return error")
-	}
-	_, err = piv.Create(&sl)
-	if err != nil {
-		t.Error(err)
-	}
-	_, err = piv.Create("test")
-	if err == nil {
-		t.Error("must return error")
-	}
+
+	t.Run("test create", func(t *testing.T) {
+		piv.db.DropAll()
+
+		_, err = piv.Create(&tbl1)
+		if err != nil {
+			t.Error(err)
+		}
+		_, err = piv.Create(tbl1)
+		if err == nil {
+			t.Error("must return error")
+		}
+		_, err = piv.Create(sl)
+		if err == nil {
+			t.Error("must return error")
+		}
+		_, err = piv.Create(ws)
+		if err == nil {
+			t.Error("must return error")
+		}
+		_, err = piv.Create(&ws)
+		if err == nil {
+			t.Error("must return error")
+		}
+		_, err = piv.Create(&sl)
+		if err != nil {
+			t.Error(err)
+		}
+		_, err = piv.Create("test")
+		if err == nil {
+			t.Error("must return error")
+		}
+	})
 
 	t.Run("test read", func(t *testing.T) {
+		piv.db.DropAll()
 
 		id, err := piv.Create(&tbl1)
 		if err != nil {
@@ -67,7 +105,7 @@ func TestCrud(t *testing.T) {
 			t.Fatal("id should not be nil")
 		}
 
-		res, err := piv.Read(&table{}, id...)
+		res, err := piv.Read(&some{}, id...)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -80,16 +118,16 @@ func TestCrud(t *testing.T) {
 			t.Error("tables must be equal")
 		}
 
-		if res[0].(table).Name != "Ruslan" {
+		if res[0].(some).Name != "Jim" {
 			t.Error("invalid read field")
 		}
 
-		err = piv.Update(&table{Name: "Jim"}, id[0])
+		err = piv.Update(&some{Name: "Jack"}, id[0])
 		if err != nil {
 			t.Error(err)
 		}
 
-		res, err = piv.Read(&table{}, id[0])
+		res, err = piv.Read(&some{}, id[0])
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -101,8 +139,123 @@ func TestCrud(t *testing.T) {
 		if a {
 			t.Error("tables must NOT be equal")
 		}
-		if res[0].(table).Name != "Jim" {
+		if res[0].(some).Name != "Jack" {
 			t.Error("invalid update field")
+		}
+
+	})
+
+	t.Run("test model", func(t *testing.T) {
+
+		m := model(&tbl1, true)
+		if m == nil {
+			t.Error("should not be nil")
+		}
+		v := m.values(&tbl1)
+		if v == nil {
+			t.Error("should not be nil")
+		}
+		if v["Address"].(string) != "St Leonards" {
+			t.Error("value conversion")
+		}
+		if v["Money"].(float64) != 32.42 {
+			t.Error("value conversion")
+		}
+
+		m = model(&tbl3, false)
+		if m == nil {
+			t.Error("should not be nil")
+		}
+		v = m.values(&tbl3)
+		if v == nil {
+			t.Error("should not be nil")
+		}
+		if _, ok := v["Name"]; ok {
+			t.Error("zero value present")
+		}
+
+		m = model(&tbl4, true)
+		if m == nil {
+			t.Error("should not be nil")
+		}
+		v = m.values(&tbl4)
+		if v == nil {
+			t.Error("should not be nil")
+		}
+		if v["Name"].(string) != "" {
+			t.Error("value conversion")
+		}
+
+	})
+
+	t.Run("test index", func(t *testing.T) {
+		piv.db.DropAll()
+
+		_, err = piv.Create(&sl)
+		if err != nil {
+			t.Error(err)
+		}
+
+		res, err := piv.where(some{Address: "Romsey St"})
+
+		rd, err := piv.Read(&some{}, res...)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if rd == nil {
+			t.Fatal("res should not be nil")
+		}
+
+		a := reflect.DeepEqual(rd[0], tbl4)
+		if !a {
+			t.Error("tables must be equal")
+		}
+
+		if rd[0].(some).Money != 100.01 {
+			t.Error("invalid read field")
+		}
+
+	})
+
+	t.Run("test select", func(t *testing.T) {
+		piv.db.DropAll()
+
+		_, err := piv.Create(&sl)
+		if err != nil {
+			t.Error(err)
+		}
+
+		res, err := piv.Select(&some{Address: "St Leonards"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if res == nil {
+			t.Fatal("res should not be nil")
+		}
+		if len(res) != 2 {
+			t.Fatal("res should have 2 elements")
+		}
+
+		res, err = piv.Select(&some{Address: "St Leonards", Age: 46})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if res == nil {
+			t.Fatal("res should not be nil")
+		}
+		if len(res) != 1 {
+			t.Fatal("res should have 1 elements")
+		}
+
+		res, err = piv.Select(&some{Address: "Romsey St"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if res == nil {
+			t.Fatal("res should not be nil")
+		}
+		if len(res) != 1 {
+			t.Fatal("res should have 1 elements")
 		}
 
 	})
@@ -170,159 +323,4 @@ func TestEncoding(t *testing.T) {
 	if fl != r.(float64) {
 		t.Error("invalid conversion")
 	}
-}
-
-func TestModel(t *testing.T) {
-	type some struct {
-		Address  string
-		Name     string
-		Universe int64
-		Age      int
-		Life     bool
-		Range    []byte
-		Money    float64
-	}
-
-	tbl := some{
-		Address:  "St Leonards",
-		Universe: 1000,
-		Age:      46,
-		Life:     true,
-		Range:    []byte("random bytes"),
-		Money:    32.42,
-	}
-
-	m := model(&tbl, true)
-	if m == nil {
-		t.Error("should not be nil")
-	}
-	v := m.values(&tbl)
-	if v == nil {
-		t.Error("should not be nil")
-	}
-	if v["Address"].(string) != "St Leonards" {
-		t.Error("value conversion")
-	}
-	if v["Money"].(float64) != 32.42 {
-		t.Error("value conversion")
-	}
-	if v["Name"].(string) != "" {
-		t.Error("value conversion")
-	}
-
-	m = model(&tbl, false)
-	if m == nil {
-		t.Error("should not be nil")
-	}
-	v = m.values(&tbl)
-	if v == nil {
-		t.Error("should not be nil")
-	}
-	if _, ok := v["Name"]; ok {
-		t.Error("zero value present")
-	}
-}
-
-func TestIndex(t *testing.T) {
-	type table struct {
-		Address string
-		Name    string `slap:"index"`
-		Age     int
-	}
-
-	tbl1 := table{
-		Address: "St Leonards",
-		Name:    "Ruslan",
-		Age:     46,
-	}
-	tbl2 := table{
-		Address: "Romsey",
-		Name:    "Sasha",
-		Age:     9,
-	}
-	tbl3 := table{
-		Address: "Church",
-		Name:    "Olya",
-		Age:     35,
-	}
-	piv := New("/tmp/badger", "sparkle")
-	piv.db.DropAll()
-	defer piv.Tidy()
-
-	sl := []table{tbl1, tbl2, tbl3}
-
-	var err error
-	_, err = piv.Create(&sl)
-	if err != nil {
-		t.Error(err)
-	}
-
-	res, err := piv.where(table{Name: "Ruslan"})
-
-	rd, err := piv.Read(&table{}, res...)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if rd == nil {
-		t.Fatal("res should not be nil")
-	}
-
-	a := reflect.DeepEqual(rd[0], tbl1)
-	if !a {
-		t.Error("tables must be equal")
-	}
-
-	if rd[0].(table).Name != "Ruslan" {
-		t.Error("invalid read field")
-	}
-}
-
-func TestSelect(t *testing.T) {
-	type table struct {
-		Address string `slap:"index"`
-		Name    string `slap:"index"`
-		Age     int    `slap:"index"`
-	}
-
-	tbl1 := table{
-		Address: "Romsey",
-		Name:    "Ruslan",
-		Age:     46,
-	}
-	tbl2 := table{
-		Address: "Romsey",
-		Name:    "Sasha",
-		Age:     9,
-	}
-	tbl3 := table{
-		Address: "Church",
-		Name:    "Olya",
-		Age:     35,
-	}
-	piv := New("/tmp/badger", "sparkle")
-	piv.db.DropAll()
-	defer piv.Tidy()
-
-	sl := []table{tbl1, tbl2, tbl3}
-
-	var err error
-	ids, err := piv.Create(&sl)
-	if err != nil {
-		t.Error(err)
-	}
-
-	t.Log("IDS: ", ids)
-
-	res, err := piv.Select(&table{Address: "Romsey"})
-	t.Log("RESULT: ", res)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if res == nil {
-		t.Fatal("res should not be nil")
-	}
-	if len(res) != 2 {
-		t.Fatal("res should have 2 elements")
-	}
-
 }
