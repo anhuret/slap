@@ -67,12 +67,20 @@ type key struct {
 	index  bool
 }
 
-func (k *key) out() string {
+func (k *key) fld() string {
 	return strings.Join([]string{k.schema, k.bucket, k.id, k.field}, ":")
+}
+
+func (k *key) rec() string {
+	return strings.Join([]string{k.schema, k.bucket, k.id}, ":")
 }
 
 func (k *key) inx(v []byte) string {
 	return strings.Join([]string{_indexSchema, k.bucket, k.field, string(v), k.id}, ":")
+}
+
+func (k *key) stb(v []byte) string {
+	return strings.Join([]string{_indexSchema, k.bucket, k.field, string(v), ""}, ":")
 }
 
 func toBytes(x interface{}) ([]byte, error) {

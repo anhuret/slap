@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/anhuret/gset"
+	"github.com/dgraph-io/badger/v2"
 	"github.com/rs/xid"
 )
 
@@ -42,6 +43,10 @@ func (p *Pivot) Create(data interface{}) ([]string, error) {
 			bucket: s.bucket,
 			id:     xid.New().String(),
 		}
+		//	err := put(p.db, &k, bts)
+		//	if err != nil {
+		//	return nil, err
+		//}
 
 		for f := range s.fields {
 			if f == "ID" {
@@ -64,6 +69,34 @@ func (p *Pivot) Create(data interface{}) ([]string, error) {
 	}
 
 	return ids, nil
+}
+
+// Delete ...
+func (p *Pivot) Delete(data interface{}, ids ...string) error {
+	s := model(data, true)
+	if s == nil {
+		return ErrInvalidParameter
+	}
+
+	k := key{
+		schema: p.schema,
+		bucket: s.bucket,
+	}
+
+	for _, id := range ids {
+		k.id = id
+
+		for f := range s.fields {
+			k.field = f
+
+			err := rem(p.db, &k)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 // Update ...
@@ -113,10 +146,12 @@ func (p *Pivot) Read(data interface{}, ids ...string) ([]interface{}, error) {
 		return nil, ErrInvalidParameter
 	}
 
-	var rec []interface{}
+	rec := make([]interface{}, 0)
+	var nul bool
 
 	for _, id := range ids {
-		str := reflect.New(reflect.TypeOf(data).Elem()).Elem()
+		obj := reflect.New(reflect.TypeOf(data).Elem()).Elem()
+		//obj := reflect.Zero(reflect.TypeOf(data).Elem())
 
 		for f, t := range s.fields {
 			k := key{
@@ -126,12 +161,15 @@ func (p *Pivot) Read(data interface{}, ids ...string) ([]interface{}, error) {
 				field:  f,
 			}
 
-			res, err := get(p.db, k.out())
+			res, err := get(p.db, k.fld())
+			if err == badger.ErrKeyNotFound {
+				continue
+			}
 			if err != nil {
 				return nil, err
 			}
-
-			fld := str.FieldByName(f)
+			nul = true
+			fld := obj.FieldByName(f)
 
 			x, err := fromBytes(res, t)
 			if err != nil {
@@ -139,7 +177,12 @@ func (p *Pivot) Read(data interface{}, ids ...string) ([]interface{}, error) {
 			}
 			fld.Set(reflect.ValueOf(x))
 		}
-		rec = append(rec, str.Interface())
+
+		if nul {
+			rec = append(rec, obj.Interface())
+		}
+		nul = false
+
 	}
 
 	return rec, nil
@@ -170,8 +213,8 @@ func (p *Pivot) where(x interface{}) ([]string, error) {
 			return nil, err
 		}
 
-		stub := strings.Join([]string{_indexSchema, k.bucket, k.field, string(bts), ""}, ":")
-		res := scan(p.db, stub)
+		//stub := strings.Join([]string{_indexSchema, k.bucket, k.field, string(bts), ""}, ":")
+		res := scan(p.db, k.stb(bts))
 		set := gset.New()
 		for _, k := range res {
 			i := strings.Split(k, ":")

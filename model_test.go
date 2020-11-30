@@ -104,6 +104,9 @@ func TestCrud(t *testing.T) {
 		if id == nil {
 			t.Fatal("id should not be nil")
 		}
+		if len(id) != 1 {
+			t.Fatal("id should have 1 element")
+		}
 
 		res, err := piv.Read(&some{}, id...)
 		if err != nil {
@@ -111,6 +114,9 @@ func TestCrud(t *testing.T) {
 		}
 		if res == nil {
 			t.Fatal("res should not be nil")
+		}
+		if len(res) != 1 {
+			t.Fatal("res should have 1 element")
 		}
 
 		a := reflect.DeepEqual(res[0], tbl1)
@@ -142,6 +148,24 @@ func TestCrud(t *testing.T) {
 		if res[0].(some).Name != "Jack" {
 			t.Error("invalid update field")
 		}
+
+		t.Run("test delete", func(t *testing.T) {
+			err = piv.Delete(&some{}, id[0])
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			res, err = piv.Read(&some{}, id[0])
+			if err != nil {
+				t.Fatal(err)
+			}
+			if res == nil {
+				t.Fatal("result should not be nil")
+			}
+			if len(res) != 0 {
+				t.Fatal("res should have 0 element")
+			}
+		})
 
 	})
 

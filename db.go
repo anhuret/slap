@@ -28,7 +28,7 @@ func initDB(path string) (*badger.DB, error) {
 }
 
 func put(db *badger.DB, k *key, value []byte) error {
-	dks := k.out()
+	dks := k.fld()
 
 	err := db.Update(func(txn *badger.Txn) error {
 		if k.index {
@@ -83,6 +83,12 @@ func get(db *badger.DB, key string) ([]byte, error) {
 		return nil, err
 	}
 	return value, nil
+}
+
+func rem(db *badger.DB, k *key) error {
+	return db.Update(func(txn *badger.Txn) error {
+		return txn.Delete([]byte(k.fld()))
+	})
 }
 
 func scan(db *badger.DB, stub string) []string {
