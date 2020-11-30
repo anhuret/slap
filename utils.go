@@ -14,27 +14,22 @@ type shape struct {
 }
 
 func model(x interface{}, z bool) *shape {
-	val := reflect.ValueOf(x)
-
-	switch {
-	case val.Kind() == reflect.Ptr && val.Elem().Kind() == reflect.Struct:
-		val = val.Elem()
-	case val.Kind() == reflect.Struct:
-	default:
+	val := reflect.Indirect(reflect.ValueOf(x))
+	if val.Kind() != reflect.Struct {
 		return nil
 	}
 
 	fields := make(map[string]reflect.Kind)
 	index := make(map[string]null)
 
-	for i := 0; i < val.NumField(); i++ {
+	for i := 0; i < val.Type().NumField(); i++ {
 		if !z && val.Field(i).IsZero() {
 			continue
 		}
-		ft := val.Type().Field(i)
-		fields[ft.Name] = val.Field(i).Kind()
-		if ft.Tag.Get("slap") == "index" {
-			index[ft.Name] = void
+		f := val.Type().Field(i)
+		fields[f.Name] = val.Field(i).Kind()
+		if f.Tag.Get("slap") == "index" {
+			index[f.Name] = void
 		}
 	}
 
@@ -52,8 +47,8 @@ func (s *shape) values(x interface{}) map[string]interface{} {
 	dta := make(map[string]interface{})
 
 	for f := range s.fields {
-		int := val.FieldByName(f).Interface()
-		dta[f] = int
+		x := val.FieldByName(f).Interface()
+		dta[f] = x
 	}
 
 	return dta
