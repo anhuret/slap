@@ -8,7 +8,7 @@ import (
 )
 
 type shape struct {
-	bucket string
+	cast   reflect.Type
 	fields map[string]reflect.Kind
 	index  map[string]null
 }
@@ -34,7 +34,7 @@ func model(x interface{}, z bool) *shape {
 	}
 
 	s := shape{
-		bucket: val.Type().Name(),
+		cast:   val.Type(),
 		fields: fields,
 		index:  index,
 	}
@@ -56,26 +56,26 @@ func (s *shape) values(x interface{}) map[string]interface{} {
 
 type key struct {
 	schema string
-	bucket string
+	table  string
 	id     string
 	field  string
 	index  bool
 }
 
 func (k *key) fld() string {
-	return strings.Join([]string{k.schema, k.bucket, k.id, k.field}, ":")
+	return strings.Join([]string{k.schema, k.table, k.id, k.field}, ":")
 }
 
 func (k *key) rec() string {
-	return strings.Join([]string{k.schema, k.bucket, k.id}, ":")
+	return strings.Join([]string{k.schema, k.table, k.id}, ":")
 }
 
 func (k *key) inx(v []byte) string {
-	return strings.Join([]string{_indexSchema, k.bucket, k.field, string(v), k.id}, ":")
+	return strings.Join([]string{_indexSchema, k.table, k.field, string(v), k.id}, ":")
 }
 
 func (k *key) stb(v []byte) string {
-	return strings.Join([]string{_indexSchema, k.bucket, k.field, string(v), ""}, ":")
+	return strings.Join([]string{_indexSchema, k.table, k.field, string(v), ""}, ":")
 }
 
 func toBytes(x interface{}) ([]byte, error) {

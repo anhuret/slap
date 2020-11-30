@@ -11,17 +11,22 @@ import (
 
 // Create ...
 func (p *Pivot) Create(data interface{}) ([]string, error) {
-	typof := reflect.TypeOf(data)
+	typ := reflect.TypeOf(data)
+	if typ.Kind() != reflect.Ptr {
+		return nil, ErrInvalidParameter
+	}
+
+	kin := typ.Elem().Kind()
 	var ids []string
 
-	switch {
-	case typof.Kind() == reflect.Ptr && typof.Elem().Kind() == reflect.Struct:
+	switch kin {
+	case reflect.Struct:
 		id, err := p.write(data)
 		if err != nil {
 			return nil, err
 		}
 		return append(ids, id), nil
-	case typof.Kind() == reflect.Ptr && typof.Elem().Kind() == reflect.Slice:
+	case reflect.Slice:
 		s := reflect.Indirect(reflect.ValueOf(data))
 
 		for i := 0; i < s.Len(); i++ {
@@ -57,7 +62,7 @@ func (p *Pivot) write(data interface{}) (string, error) {
 
 	k := key{
 		schema: p.schema,
-		bucket: s.bucket,
+		table:  s.cast.Name(),
 		id:     xid.New().String(),
 	}
 
@@ -90,7 +95,7 @@ func (p *Pivot) Delete(data interface{}, ids ...string) error {
 
 	k := key{
 		schema: p.schema,
-		bucket: s.bucket,
+		table:  s.cast.Name(),
 	}
 
 	for _, id := range ids {
@@ -122,7 +127,7 @@ func (p *Pivot) Update(data interface{}, ids ...string) error {
 
 	k := key{
 		schema: p.schema,
-		bucket: s.bucket,
+		table:  s.cast.Name(),
 	}
 
 	for _, id := range ids {
@@ -185,7 +190,7 @@ func (p *Pivot) read(data interface{}, id string) (interface{}, error) {
 	for f, t := range s.fields {
 		k := key{
 			schema: p.schema,
-			bucket: s.bucket,
+			table:  s.cast.Name(),
 			id:     id,
 			field:  f,
 		}
@@ -228,7 +233,7 @@ func (p *Pivot) where(x interface{}) ([]string, error) {
 
 	k := key{
 		schema: p.schema,
-		bucket: s.bucket,
+		table:  s.cast.Name(),
 	}
 
 	var acc []*gset.Set
