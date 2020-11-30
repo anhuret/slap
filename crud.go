@@ -157,9 +157,13 @@ func (p *Pivot) Update(data interface{}, ids ...string) error {
 // Read ...
 func (p *Pivot) Read(data interface{}, ids ...string) ([]interface{}, error) {
 	rec := make([]interface{}, 0)
+	s := model(data, true)
+	if s == nil {
+		return nil, ErrInvalidParameter
+	}
 
 	for _, id := range ids {
-		x, err := p.read(data, id)
+		x, err := p.read(s, id)
 		if err != nil {
 			return nil, err
 		}
@@ -173,19 +177,9 @@ func (p *Pivot) Read(data interface{}, ids ...string) ([]interface{}, error) {
 }
 
 // read ...
-func (p *Pivot) read(data interface{}, id string) (interface{}, error) {
-	val := reflect.Indirect(reflect.ValueOf(data))
-	if val.Kind() != reflect.Struct {
-		return "", ErrInvalidParameter
-	}
-
-	s := model(data, true)
-	if s == nil {
-		return nil, ErrInvalidParameter
-	}
-
+func (p *Pivot) read(s *shape, id string) (interface{}, error) {
 	var nul bool
-	obj := reflect.New(val.Type()).Elem()
+	obj := reflect.New(s.cast).Elem()
 
 	for f, t := range s.fields {
 		k := key{
