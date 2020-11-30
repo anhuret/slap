@@ -9,68 +9,6 @@ import (
 	"github.com/rs/xid"
 )
 
-// Create2 ...
-func (p *Pivot) Create2(data interface{}) ([]string, error) {
-	if reflect.TypeOf(data).Kind() != reflect.Ptr {
-		return nil, ErrInvalidParameter
-	}
-
-	var acc []interface{}
-	var ids []string
-
-	if reflect.TypeOf(data).Elem().Kind() != reflect.Slice {
-		acc = append(acc, data)
-	} else {
-		v := reflect.ValueOf(data).Elem()
-		for i := 0; i < v.Len(); i++ {
-			acc = append(acc, v.Index(i).Interface())
-		}
-	}
-
-	s := model(acc[0], false)
-	if s == nil {
-		return nil, ErrInvalidParameter
-	}
-
-	for _, d := range acc {
-		v := s.values(d)
-		if v == nil {
-			return nil, ErrTypeConversion
-		}
-
-		k := key{
-			schema: p.schema,
-			bucket: s.bucket,
-			id:     xid.New().String(),
-		}
-		//	err := put(p.db, &k, bts)
-		//	if err != nil {
-		//	return nil, err
-		//}
-
-		for f := range s.fields {
-			if f == "ID" {
-				continue
-			}
-			_, k.index = s.index[f]
-			k.field = f
-
-			bts, err := toBytes(v[f])
-			if err != nil {
-				return nil, err
-			}
-			err = put(p.db, &k, bts)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		ids = append(ids, k.id)
-	}
-
-	return ids, nil
-}
-
 // Create ...
 func (p *Pivot) Create(data interface{}) ([]string, error) {
 	typof := reflect.TypeOf(data)
@@ -211,54 +149,6 @@ func (p *Pivot) Update(data interface{}, ids ...string) error {
 	return nil
 }
 
-// Read2 ...
-func (p *Pivot) Read2(data interface{}, ids ...string) ([]interface{}, error) {
-	s := model(data, true)
-	if s == nil {
-		return nil, ErrInvalidParameter
-	}
-
-	rec := make([]interface{}, 0)
-	var nul bool
-
-	for _, id := range ids {
-		obj := reflect.New(reflect.TypeOf(data).Elem()).Elem()
-
-		for f, t := range s.fields {
-			k := key{
-				schema: p.schema,
-				bucket: s.bucket,
-				id:     id,
-				field:  f,
-			}
-
-			res, err := get(p.db, k.fld())
-			if err == badger.ErrKeyNotFound {
-				continue
-			}
-			if err != nil {
-				return nil, err
-			}
-			nul = true
-			fld := obj.FieldByName(f)
-
-			x, err := fromBytes(res, t)
-			if err != nil {
-				return nil, err
-			}
-			fld.Set(reflect.ValueOf(x))
-		}
-
-		if nul {
-			rec = append(rec, obj.Interface())
-		}
-		nul = false
-
-	}
-
-	return rec, nil
-}
-
 // Read ...
 func (p *Pivot) Read(data interface{}, ids ...string) ([]interface{}, error) {
 	rec := make([]interface{}, 0)
@@ -351,7 +241,6 @@ func (p *Pivot) where(x interface{}) ([]string, error) {
 			return nil, err
 		}
 
-		//stub := strings.Join([]string{_indexSchema, k.bucket, k.field, string(bts), ""}, ":")
 		res := scan(p.db, k.stb(bts))
 		set := gset.New()
 		for _, k := range res {
