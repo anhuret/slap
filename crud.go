@@ -9,8 +9,8 @@ import (
 	"github.com/rs/xid"
 )
 
-// Create ...
-func (p *Pivot) Create(data interface{}) ([]string, error) {
+// Create2 ...
+func (p *Pivot) Create2(data interface{}) ([]string, error) {
 	typ := reflect.TypeOf(data)
 	if typ.Kind() != reflect.Ptr {
 		return nil, ErrInvalidParameter
@@ -21,7 +21,7 @@ func (p *Pivot) Create(data interface{}) ([]string, error) {
 
 	switch kin {
 	case reflect.Struct:
-		id, err := p.write(data)
+		id, err := p.write2(data)
 		if err != nil {
 			return nil, err
 		}
@@ -30,7 +30,64 @@ func (p *Pivot) Create(data interface{}) ([]string, error) {
 		s := reflect.Indirect(reflect.ValueOf(data))
 
 		for i := 0; i < s.Len(); i++ {
-			id, err := p.write(s.Index(i).Interface())
+			id, err := p.write2(s.Index(i).Interface())
+			if err != nil {
+				return nil, err
+			}
+			ids = append(ids, id)
+		}
+	default:
+		return nil, ErrInvalidParameter
+
+	}
+	return ids, nil
+}
+
+// Write ...
+func (p *Pivot) Write(data interface{}) ([]string, error) {
+	val := reflect.ValueOf(data)
+	if val.Type().Kind() != reflect.Ptr {
+		return nil, ErrInvalidParameter
+	}
+
+	ind := reflect.Indirect(val)
+	kin := ind.Type().Kind()
+	ids := []string{}
+
+	switch kin {
+	case reflect.Struct:
+		s := model(ind.Interface(), false)
+		if s == nil {
+			return nil, ErrInvalidParameter
+		}
+
+		v := s.values(ind.Interface())
+		if v == nil {
+			return nil, ErrTypeConversion
+		}
+
+		id, err := p.write(s, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return append(ids, id), nil
+	case reflect.Slice:
+		if ind.Len() == 0 {
+			return ids, nil
+		}
+		s := model(ind.Index(0).Interface(), false)
+		if s == nil {
+			return nil, ErrInvalidParameter
+		}
+
+		var v vals
+		for i := 0; i < ind.Len(); i++ {
+			v = s.values(ind.Index(i).Interface())
+			if v == nil {
+				return nil, ErrTypeConversion
+			}
+			id, err := p.write(s, v)
 			if err != nil {
 				return nil, err
 			}
@@ -44,7 +101,36 @@ func (p *Pivot) Create(data interface{}) ([]string, error) {
 }
 
 // write ...
-func (p *Pivot) write(data interface{}) (string, error) {
+func (p *Pivot) write(s *shape, v vals) (string, error) {
+
+	k := key{
+		schema: p.schema,
+		table:  s.cast.Name(),
+		id:     xid.New().String(),
+	}
+
+	for f := range s.fields {
+		if f == "ID" {
+			continue
+		}
+		_, k.index = s.index[f]
+		k.field = f
+
+		bts, err := toBytes(v[f])
+		if err != nil {
+			return "", err
+		}
+		err = put(p.db, &k, bts)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return k.id, nil
+}
+
+// write ...
+func (p *Pivot) write2(data interface{}) (string, error) {
 	val := reflect.Indirect(reflect.ValueOf(data))
 	if val.Kind() != reflect.Struct {
 		return "", ErrInvalidParameter

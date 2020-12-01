@@ -64,31 +64,31 @@ func TestCrud(t *testing.T) {
 	t.Run("test create", func(t *testing.T) {
 		piv.db.DropAll()
 
-		_, err = piv.Create(&tbl1)
+		_, err = piv.Write(&tbl1)
 		if err != nil {
 			t.Error(err)
 		}
-		_, err = piv.Create(tbl1)
+		_, err = piv.Write(tbl1)
 		if err == nil {
 			t.Error("must return error")
 		}
-		_, err = piv.Create(sl)
+		_, err = piv.Write(sl)
 		if err == nil {
 			t.Error("must return error")
 		}
-		_, err = piv.Create(ws)
+		_, err = piv.Write(ws)
 		if err == nil {
 			t.Error("must return error")
 		}
-		_, err = piv.Create(&ws)
+		_, err = piv.Write(&ws)
 		if err == nil {
 			t.Error("must return error")
 		}
-		_, err = piv.Create(&sl)
+		_, err = piv.Write(&sl)
 		if err != nil {
 			t.Error(err)
 		}
-		_, err = piv.Create("test")
+		_, err = piv.Write("test")
 		if err == nil {
 			t.Error("must return error")
 		}
@@ -97,7 +97,7 @@ func TestCrud(t *testing.T) {
 	t.Run("test read", func(t *testing.T) {
 		piv.db.DropAll()
 
-		id, err := piv.Create(&tbl1)
+		id, err := piv.Write(&tbl1)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -215,7 +215,7 @@ func TestCrud(t *testing.T) {
 	t.Run("test index", func(t *testing.T) {
 		piv.db.DropAll()
 
-		_, err = piv.Create(&sl)
+		_, err = piv.Write(&sl)
 		if err != nil {
 			t.Error(err)
 		}
@@ -244,7 +244,7 @@ func TestCrud(t *testing.T) {
 	t.Run("test select", func(t *testing.T) {
 		piv.db.DropAll()
 
-		_, err := piv.Create(&sl)
+		_, err := piv.Write(&sl)
 		if err != nil {
 			t.Error(err)
 		}

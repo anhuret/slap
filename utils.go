@@ -26,8 +26,10 @@ func model(x interface{}, z bool) *shape {
 		if !z && val.Field(i).IsZero() {
 			continue
 		}
+
 		f := val.Type().Field(i)
 		fields[f.Name] = val.Field(i).Kind()
+
 		if f.Tag.Get("slap") == "index" {
 			index[f.Name] = void
 		}
@@ -42,16 +44,19 @@ func model(x interface{}, z bool) *shape {
 	return &s
 }
 
-func (s *shape) values(x interface{}) map[string]interface{} {
+func (s *shape) values(x interface{}) vals {
 	val := reflect.Indirect(reflect.ValueOf(x))
-	dta := make(map[string]interface{})
-
-	for f := range s.fields {
-		x := val.FieldByName(f).Interface()
-		dta[f] = x
+	if val.Kind() != reflect.Struct {
+		return nil
 	}
 
-	return dta
+	vls := make(vals)
+
+	for f := range s.fields {
+		vls[f] = val.FieldByName(f).Interface()
+	}
+
+	return vls
 }
 
 type key struct {

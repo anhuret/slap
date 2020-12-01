@@ -14,6 +14,7 @@ type Pivot struct {
 }
 
 type null struct{}
+type vals map[string]interface{}
 
 var (
 	// ErrInvalidParameter ...
