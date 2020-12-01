@@ -2,14 +2,10 @@ package slap
 
 import (
 	"reflect"
-	"strings"
-
-	"github.com/anhuret/gset"
-	"github.com/dgraph-io/badger/v2"
-	"github.com/rs/xid"
 )
 
-// Write ...
+// Write accepts struct or slice of struct pointers
+// Returns slice of record IDs saved
 func (p *Pivot) Write(data interface{}) ([]string, error) {
 	ids := []string{}
 	val := reflect.ValueOf(data)
@@ -65,36 +61,8 @@ func (p *Pivot) Write(data interface{}) ([]string, error) {
 	return ids, nil
 }
 
-// write ...
-func (p *Pivot) write(s *shape, v vals) (string, error) {
-
-	k := key{
-		schema: p.schema,
-		table:  s.cast.Name(),
-		id:     xid.New().String(),
-	}
-
-	for f := range s.fields {
-		if f == "ID" {
-			continue
-		}
-		_, k.index = s.index[f]
-		k.field = f
-
-		bts, err := toBytes(v[f])
-		if err != nil {
-			return "", err
-		}
-		err = put(p.db, &k, bts)
-		if err != nil {
-			return "", err
-		}
-	}
-
-	return k.id, nil
-}
-
-// Delete ...
+// Delete removes one or many records with given IDs
+// Accepts a struct and variadic IDs
 func (p *Pivot) Delete(data interface{}, ids ...string) error {
 	s := model(data, true)
 	if s == nil {
@@ -122,7 +90,8 @@ func (p *Pivot) Delete(data interface{}, ids ...string) error {
 	return nil
 }
 
-// Update ...
+// Update mofifies records with given IDs
+// Non zero values are updated
 func (p *Pivot) Update(data interface{}, ids ...string) error {
 	s := model(data, false)
 	if s == nil {
@@ -162,7 +131,8 @@ func (p *Pivot) Update(data interface{}, ids ...string) error {
 	return nil
 }
 
-// Read ...
+// Read retrieves one or many records with given IDs
+// Returns slice of interfaces
 func (p *Pivot) Read(data interface{}, ids ...string) ([]interface{}, error) {
 	rec := []interface{}{}
 	s := model(data, true)
@@ -184,91 +154,8 @@ func (p *Pivot) Read(data interface{}, ids ...string) ([]interface{}, error) {
 	return rec, nil
 }
 
-// read ...
-func (p *Pivot) read(s *shape, id string) (interface{}, error) {
-	var nul bool
-	obj := reflect.New(s.cast).Elem()
-
-	for f, t := range s.fields {
-		k := key{
-			schema: p.schema,
-			table:  s.cast.Name(),
-			id:     id,
-			field:  f,
-		}
-
-		res, err := get(p.db, k.fld())
-		if err == badger.ErrKeyNotFound {
-			continue
-		}
-		if err != nil {
-			return nil, err
-		}
-
-		nul = true
-		fld := obj.FieldByName(f)
-
-		x, err := fromBytes(res, t)
-		if err != nil {
-			return nil, err
-		}
-
-		fld.Set(reflect.ValueOf(x))
-	}
-
-	if nul {
-		return obj.Interface(), nil
-	}
-
-	return nil, nil
-}
-
-func (p *Pivot) where(x interface{}) ([]string, error) {
-	s := model(x, false)
-	if s == nil {
-		return nil, ErrInvalidParameter
-	}
-	v := s.values(x)
-	if v == nil {
-		return nil, ErrTypeConversion
-	}
-
-	k := key{
-		schema: p.schema,
-		table:  s.cast.Name(),
-	}
-
-	var acc []*gset.Set
-
-	for f := range s.fields {
-		k.field = f
-
-		bts, err := toBytes(v[f])
-		if err != nil {
-			return nil, err
-		}
-
-		res := scan(p.db, k.stb(bts))
-		set := gset.New()
-		for _, k := range res {
-			i := strings.Split(k, ":")
-			set.Add(i[len(i)-1])
-		}
-
-		acc = append(acc, set)
-	}
-
-	switch len(acc) {
-	case 1:
-		return acc[0].ToSlice(), nil
-	case 0:
-		return []string{}, nil
-	default:
-		return acc[0].Intersect(acc[1:]...).ToSlice(), nil
-	}
-}
-
-// Select ...
+// Select retrieves records ANDing non zero values
+// Returns slice of interfaces
 func (p *Pivot) Select(x interface{}) ([]interface{}, error) {
 	val := reflect.Indirect(reflect.ValueOf(x)).Interface()
 	ids, err := p.where(val)
