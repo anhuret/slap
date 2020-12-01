@@ -9,25 +9,17 @@ type DB struct {
 	*badger.DB
 }
 
-func newDB(path string) (*DB, error) {
-	db, err := badger.Open(badger.DefaultOptions(path))
-	if err != nil {
-		return nil, err
-	}
-	return &DB{db}, nil
-}
-
-func initDB(path string) (*badger.DB, error) {
+func initDB(path string) (*DB, error) {
 	ops := badger.DefaultOptions(path)
 	ops.Logger = nil
 	db, err := badger.Open(ops)
 	if err != nil {
 		return nil, err
 	}
-	return db, nil
+	return &DB{db}, nil
 }
 
-func put(db *badger.DB, k *key, value []byte) error {
+func (db *DB) put(k *key, value []byte) error {
 	dks := k.fld()
 
 	err := db.Update(func(txn *badger.Txn) error {
@@ -66,7 +58,7 @@ func put(db *badger.DB, k *key, value []byte) error {
 	return nil
 }
 
-func get(db *badger.DB, key string) ([]byte, error) {
+func (db *DB) get(key string) ([]byte, error) {
 	var value []byte
 	err := db.View(func(txn *badger.Txn) error {
 		item, err := txn.Get([]byte(key))
@@ -85,7 +77,7 @@ func get(db *badger.DB, key string) ([]byte, error) {
 	return value, nil
 }
 
-func rem(db *badger.DB, k *key) (err error) {
+func (db *DB) rem(k *key) (err error) {
 	f := k.fld()
 
 	err = db.Update(func(txn *badger.Txn) (err error) {
@@ -117,7 +109,7 @@ func rem(db *badger.DB, k *key) (err error) {
 	return
 }
 
-func scan(db *badger.DB, stub string) []string {
+func (db *DB) scan(stub string) []string {
 	var acc []string
 	db.View(func(txn *badger.Txn) error {
 		ops := badger.DefaultIteratorOptions
@@ -134,7 +126,7 @@ func scan(db *badger.DB, stub string) []string {
 	return acc
 }
 
-func isKey(db *badger.DB, key string) (bool, error) {
+func (db *DB) isKey(key string) (bool, error) {
 	err := db.View(func(txn *badger.Txn) error {
 		_, err := txn.Get([]byte(key))
 		if err != nil {

@@ -80,7 +80,7 @@ func (p *Pivot) Delete(data interface{}, ids ...string) error {
 		for f := range s.fields {
 			k.field = f
 
-			err := rem(p.db, &k)
+			err := p.db.rem(&k)
 			if err != nil {
 				return err
 			}
@@ -121,7 +121,7 @@ func (p *Pivot) Update(data interface{}, ids ...string) error {
 			if err != nil {
 				return err
 			}
-			err = put(p.db, &k, bts)
+			err = p.db.put(&k, bts)
 			if err != nil {
 				return err
 			}

@@ -13,7 +13,7 @@ import (
 
 // Pivot ...
 type Pivot struct {
-	db     *badger.DB
+	db     *DB
 	schema string
 }
 
@@ -76,7 +76,7 @@ func (p *Pivot) write(s *shape, v vals) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		err = put(p.db, &k, bts)
+		err = p.db.put(&k, bts)
 		if err != nil {
 			return "", err
 		}
@@ -98,7 +98,7 @@ func (p *Pivot) read(s *shape, id string) (interface{}, error) {
 			field:  f,
 		}
 
-		res, err := get(p.db, k.fld())
+		res, err := p.db.get(k.fld())
 		if err == badger.ErrKeyNotFound {
 			continue
 		}
@@ -149,7 +149,7 @@ func (p *Pivot) where(x interface{}) ([]string, error) {
 			return nil, err
 		}
 
-		res := scan(p.db, k.stb(bts))
+		res := p.db.scan(k.stb(bts))
 		set := gset.New()
 		for _, k := range res {
 			i := strings.Split(k, ":")
