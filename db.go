@@ -85,10 +85,36 @@ func get(db *badger.DB, key string) ([]byte, error) {
 	return value, nil
 }
 
-func rem(db *badger.DB, k *key) error {
-	return db.Update(func(txn *badger.Txn) error {
-		return txn.Delete([]byte(k.fld()))
+func rem(db *badger.DB, k *key) (err error) {
+	f := k.fld()
+
+	err = db.Update(func(txn *badger.Txn) (err error) {
+		if k.index {
+			var i *badger.Item
+			i, err = txn.Get([]byte(f))
+			if err != nil && err != badger.ErrKeyNotFound {
+				return
+			}
+
+			if err == nil {
+				var v []byte
+				v, err = i.ValueCopy(nil)
+				if err != nil {
+					return
+				}
+
+				err = txn.Delete([]byte(k.inx(v)))
+				if err != nil {
+					return
+				}
+			}
+		}
+		err = txn.Delete([]byte(f))
+
+		return
 	})
+
+	return
 }
 
 func scan(db *badger.DB, stub string) []string {
