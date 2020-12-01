@@ -107,3 +107,20 @@ func scan(db *badger.DB, stub string) []string {
 
 	return acc
 }
+
+func isKey(db *badger.DB, key string) (bool, error) {
+	err := db.View(func(txn *badger.Txn) error {
+		_, err := txn.Get([]byte(key))
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err == badger.ErrKeyNotFound {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
