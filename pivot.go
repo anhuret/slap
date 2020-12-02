@@ -67,6 +67,11 @@ func (p *Pivot) write(s *shape, v vals) (string, error) {
 		id:     xid.New().String(),
 	}
 
+	err := p.db.set(k.rec(), []byte{0})
+	if err != nil {
+		return "", err
+	}
+
 	for f := range s.fields {
 		if f == "ID" {
 			continue
