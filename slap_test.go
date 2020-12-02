@@ -1,7 +1,6 @@
 package slap
 
 import (
-	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -285,7 +284,6 @@ func TestCrud(t *testing.T) {
 		}
 
 	})
-
 }
 
 func TestEncoding(t *testing.T) {
@@ -294,7 +292,7 @@ func TestEncoding(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	r, err := fromBytes(v, reflect.String)
+	r, err := fromBytes(v, "string")
 	if err != nil {
 		t.Error(err)
 	}
@@ -306,7 +304,7 @@ func TestEncoding(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	r, err = fromBytes(v, reflect.Int)
+	r, err = fromBytes(v, "int")
 	if err != nil {
 		t.Error(err)
 	}
@@ -318,7 +316,7 @@ func TestEncoding(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	r, err = fromBytes(v, reflect.Bool)
+	r, err = fromBytes(v, "bool")
 	if err != nil {
 		t.Error(err)
 	}
@@ -330,7 +328,7 @@ func TestEncoding(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	r, err = fromBytes(v, reflect.Slice)
+	r, err = fromBytes(v, "[]uint8")
 	if err != nil {
 		t.Error(err)
 	}
@@ -342,7 +340,7 @@ func TestEncoding(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	r, err = fromBytes(v, reflect.Float64)
+	r, err = fromBytes(v, "float64")
 	if err != nil {
 		t.Error(err)
 	}
@@ -352,13 +350,28 @@ func TestEncoding(t *testing.T) {
 }
 
 func TestTime(t *testing.T) {
-	n := time.Now()
-	r := reflect.TypeOf(n)
-	fmt.Println(r)
-	enc, _ := n.GobEncode()
+	piv := New("/tmp/badger", "sparkle")
+	defer piv.db.Close()
+	piv.db.DropAll()
+	w := time.Now().Round(0)
 
-	var l time.Time
-	l.GobDecode(enc)
-	fmt.Println(l)
+	type tmc struct {
+		When time.Time
+	}
 
+	b := tmc{When: w}
+
+	id, err := piv.Write(&b)
+	if err != nil {
+		t.Error(err)
+	}
+
+	res, err := piv.Read(&tmc{}, id...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if res[0].(tmc).When != w {
+		t.Error("time should match")
+	}
 }

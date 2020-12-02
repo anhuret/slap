@@ -10,7 +10,7 @@ import (
 
 type shape struct {
 	cast   reflect.Type
-	fields map[string]reflect.Kind
+	fields map[string]string
 	index  map[string]null
 }
 
@@ -19,17 +19,18 @@ func model(x interface{}, z bool) *shape {
 	if val.Kind() != reflect.Struct {
 		return nil
 	}
+	typ := val.Type()
 
-	fields := make(map[string]reflect.Kind)
+	fields := make(map[string]string)
 	index := make(map[string]null)
 
-	for i := 0; i < val.Type().NumField(); i++ {
+	for i := 0; i < typ.NumField(); i++ {
 		if !z && val.Field(i).IsZero() {
 			continue
 		}
 
-		f := val.Type().Field(i)
-		fields[f.Name] = val.Field(i).Kind()
+		f := typ.Field(i)
+		fields[f.Name] = val.Field(i).Type().String()
 
 		if f.Tag.Get("slap") == "index" {
 			index[f.Name] = void
@@ -95,56 +96,56 @@ func toBytes(x interface{}) ([]byte, error) {
 	return bts.Bytes(), nil
 
 }
-func fromBytes(bts []byte, t reflect.Kind) (interface{}, error) {
+func fromBytes(bts []byte, t string) (interface{}, error) {
 	buf := bytes.NewReader(bts)
 	dec := gob.NewDecoder(buf)
 
 	switch t {
-	case reflect.String:
+	case "string":
 		var x string
 		err := dec.Decode(&x)
 		if err != nil {
 			return nil, err
 		}
 		return x, nil
-	case reflect.Int:
+	case "int":
 		var x int
 		err := dec.Decode(&x)
 		if err != nil {
 			return nil, err
 		}
 		return x, nil
-	case reflect.Int64:
+	case "int64":
 		var x int64
 		err := dec.Decode(&x)
 		if err != nil {
 			return nil, err
 		}
 		return x, nil
-	case reflect.Float64:
+	case "float64":
 		var x float64
 		err := dec.Decode(&x)
 		if err != nil {
 			return nil, err
 		}
 		return x, nil
-	case reflect.Slice:
+	case "[]uint8":
 		var x []byte
 		err := dec.Decode(&x)
 		if err != nil {
 			return nil, err
 		}
 		return x, nil
-	case reflect.Bool:
+	case "bool":
 		var x bool
 		err := dec.Decode(&x)
 		if err != nil {
 			return nil, err
 		}
 		return x, nil
-	case reflect.Struct:
+	case "time.Time":
 		var x time.Time
-		err := x.GobDecode(bts)
+		err := dec.Decode(&x)
 		if err != nil {
 			return nil, err
 		}
