@@ -5,6 +5,7 @@ import (
 	"encoding/gob"
 	"reflect"
 	"strings"
+	"time"
 )
 
 type shape struct {
@@ -137,6 +138,13 @@ func fromBytes(bts []byte, t reflect.Kind) (interface{}, error) {
 	case reflect.Bool:
 		var x bool
 		err := dec.Decode(&x)
+		if err != nil {
+			return nil, err
+		}
+		return x, nil
+	case reflect.Struct:
+		var x time.Time
+		err := x.GobDecode(bts)
 		if err != nil {
 			return nil, err
 		}

@@ -58,6 +58,12 @@ func (db *DB) put(k *key, value []byte) error {
 	return nil
 }
 
+func (db *DB) set(k string, v []byte) error {
+	return db.Update(func(txn *badger.Txn) error {
+		return txn.Set([]byte(k), v)
+	})
+}
+
 func (db *DB) get(key string) ([]byte, error) {
 	var value []byte
 	err := db.View(func(txn *badger.Txn) error {

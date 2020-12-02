@@ -1,8 +1,10 @@
 package slap
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestCrud(t *testing.T) {
@@ -347,4 +349,16 @@ func TestEncoding(t *testing.T) {
 	if fl != r.(float64) {
 		t.Error("invalid conversion")
 	}
+}
+
+func TestTime(t *testing.T) {
+	n := time.Now()
+	r := reflect.TypeOf(n)
+	fmt.Println(r)
+	enc, _ := n.GobEncode()
+
+	var l time.Time
+	l.GobDecode(enc)
+	fmt.Println(l)
+
 }
