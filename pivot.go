@@ -29,7 +29,9 @@ var (
 	ErrNoRecord = errors.New("record does not exist")
 	// ErrReservedWord ...
 	ErrReservedWord = errors.New("reserved identifier used")
-	void            null
+	// ErrNoPrimaryID ...
+	ErrNoPrimaryID = errors.New("primary ID field does not exist")
+	void           null
 )
 
 const (
@@ -90,13 +92,17 @@ func (p *Pivot) read(s *shape, id string) (interface{}, error) {
 	var nul bool
 	obj := reflect.New(s.cast).Elem()
 
+	k := key{
+		schema: p.schema,
+		table:  s.cast.Name(),
+		id:     id,
+	}
+
 	for f, t := range s.fields {
-		k := key{
-			schema: p.schema,
-			table:  s.cast.Name(),
-			id:     id,
-			field:  f,
+		if f == "ID" {
+			continue
 		}
+		k.field = f
 
 		res, err := p.db.get(k.fld())
 		if err == badger.ErrKeyNotFound {
@@ -118,6 +124,7 @@ func (p *Pivot) read(s *shape, id string) (interface{}, error) {
 	}
 
 	if nul {
+		obj.FieldByName("ID").Set(reflect.ValueOf(id))
 		return obj.Interface(), nil
 	}
 
@@ -125,9 +132,9 @@ func (p *Pivot) read(s *shape, id string) (interface{}, error) {
 }
 
 func (p *Pivot) where(x interface{}) ([]string, error) {
-	s := model(x, false)
-	if s == nil {
-		return nil, ErrInvalidParameter
+	s, err := model(x, false)
+	if err != nil {
+		return nil, err
 	}
 	v := s.values(x)
 	if v == nil {

@@ -17,9 +17,9 @@ func (p *Pivot) Write(data interface{}) ([]string, error) {
 
 	switch kin {
 	case reflect.Struct:
-		s := model(ind.Interface(), false)
-		if s == nil {
-			return ids, ErrInvalidParameter
+		s, err := model(ind.Interface(), false)
+		if err != nil {
+			return ids, err
 		}
 
 		v := s.values(ind.Interface())
@@ -37,9 +37,9 @@ func (p *Pivot) Write(data interface{}) ([]string, error) {
 		if ind.Len() == 0 {
 			return ids, nil
 		}
-		s := model(ind.Index(0).Interface(), false)
-		if s == nil {
-			return ids, ErrInvalidParameter
+		s, err := model(ind.Index(0).Interface(), false)
+		if err != nil {
+			return ids, err
 		}
 
 		var v vals
@@ -64,9 +64,9 @@ func (p *Pivot) Write(data interface{}) ([]string, error) {
 // Delete removes one or many records with given IDs
 // Accepts a struct and variadic IDs
 func (p *Pivot) Delete(data interface{}, ids ...string) error {
-	s := model(data, true)
-	if s == nil {
-		return ErrInvalidParameter
+	s, err := model(data, true)
+	if err != nil {
+		return err
 	}
 
 	k := key{
@@ -93,9 +93,9 @@ func (p *Pivot) Delete(data interface{}, ids ...string) error {
 // Update mofifies records with given IDs
 // Non zero values are updated
 func (p *Pivot) Update(data interface{}, ids ...string) error {
-	s := model(data, false)
-	if s == nil {
-		return ErrInvalidParameter
+	s, err := model(data, false)
+	if err != nil {
+		return err
 	}
 	v := s.values(data)
 	if v == nil {
@@ -135,9 +135,9 @@ func (p *Pivot) Update(data interface{}, ids ...string) error {
 // Returns slice of interfaces
 func (p *Pivot) Read(data interface{}, ids ...string) ([]interface{}, error) {
 	rec := []interface{}{}
-	s := model(data, true)
-	if s == nil {
-		return rec, ErrInvalidParameter
+	s, err := model(data, true)
+	if err != nil {
+		return rec, err
 	}
 
 	for _, id := range ids {

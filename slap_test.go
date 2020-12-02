@@ -8,6 +8,7 @@ import (
 
 func TestCrud(t *testing.T) {
 	type some struct {
+		ID       string
 		Address  string `slap:"index"`
 		Name     string
 		Universe int64
@@ -124,16 +125,15 @@ func TestCrud(t *testing.T) {
 			t.Fatal("res should have 1 element")
 		}
 
-		a := reflect.DeepEqual(res[0], tbl1)
-		if !a {
-			t.Error("tables must be equal")
-		}
-
 		if res[0].(some).Name != "Jim" {
 			t.Error("invalid read")
 		}
 
 		if res[0].(some).When != tm {
+			t.Error("invalid read")
+		}
+
+		if res[0].(some).ID != id[0] {
 			t.Error("invalid read")
 		}
 
@@ -150,10 +150,6 @@ func TestCrud(t *testing.T) {
 			t.Fatal("result should not be nil")
 		}
 
-		a = reflect.DeepEqual(res[0], tbl1)
-		if a {
-			t.Error("tables must NOT be equal")
-		}
 		if res[0].(some).Name != "Jack" {
 			t.Error("invalid update field")
 		}
@@ -179,9 +175,9 @@ func TestCrud(t *testing.T) {
 
 	t.Run("test model", func(t *testing.T) {
 
-		m := model(&tbl1, true)
-		if m == nil {
-			t.Error("should not be nil")
+		m, err := model(&tbl1, true)
+		if err != nil {
+			t.Fatal(err)
 		}
 		v := m.values(&tbl1)
 		if v == nil {
@@ -194,9 +190,9 @@ func TestCrud(t *testing.T) {
 			t.Error("value conversion")
 		}
 
-		m = model(&tbl3, false)
-		if m == nil {
-			t.Error("should not be nil")
+		m, err = model(&tbl3, false)
+		if err != nil {
+			t.Fatal(err)
 		}
 		v = m.values(&tbl3)
 		if v == nil {
@@ -206,9 +202,9 @@ func TestCrud(t *testing.T) {
 			t.Error("zero value present")
 		}
 
-		m = model(&tbl4, true)
-		if m == nil {
-			t.Error("should not be nil")
+		m, err = model(&tbl4, true)
+		if err != nil {
+			t.Fatal(err)
 		}
 		v = m.values(&tbl4)
 		if v == nil {
@@ -236,11 +232,6 @@ func TestCrud(t *testing.T) {
 		}
 		if rd == nil {
 			t.Fatal("res should not be nil")
-		}
-
-		a := reflect.DeepEqual(rd[0], tbl4)
-		if !a {
-			t.Error("tables must be equal")
 		}
 
 		if rd[0].(some).Money != 100.01 {
@@ -363,6 +354,7 @@ func TestTime(t *testing.T) {
 	w := time.Now().Round(0)
 
 	type tmc struct {
+		ID   string
 		When time.Time
 	}
 

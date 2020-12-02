@@ -14,27 +14,35 @@ type shape struct {
 	index  map[string]null
 }
 
-func model(x interface{}, z bool) *shape {
+func model(x interface{}, z bool) (*shape, error) {
 	val := reflect.Indirect(reflect.ValueOf(x))
 	if val.Kind() != reflect.Struct {
-		return nil
+		return nil, ErrInvalidParameter
 	}
 	typ := val.Type()
 
 	fields := make(map[string]string)
 	index := make(map[string]null)
+	var id bool
 
 	for i := 0; i < typ.NumField(); i++ {
+		f := typ.Field(i)
+		if f.Name == "ID" {
+			id = true
+		}
+
 		if !z && val.Field(i).IsZero() {
 			continue
 		}
-
-		f := typ.Field(i)
 		fields[f.Name] = val.Field(i).Type().String()
 
 		if f.Tag.Get("slap") == "index" {
 			index[f.Name] = void
 		}
+	}
+
+	if !id {
+		return nil, ErrNoPrimaryID
 	}
 
 	s := shape{
@@ -43,7 +51,7 @@ func model(x interface{}, z bool) *shape {
 		index:  index,
 	}
 
-	return &s
+	return &s, nil
 }
 
 func (s *shape) values(x interface{}) vals {
