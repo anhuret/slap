@@ -15,7 +15,10 @@ func TestCrud(t *testing.T) {
 		Life     bool
 		Range    []byte
 		Money    float64 `slap:"index"`
+		When     time.Time
 	}
+
+	tm := time.Now().Round(0)
 
 	tbl1 := some{
 		Address:  "St Leonards",
@@ -25,6 +28,7 @@ func TestCrud(t *testing.T) {
 		Life:     true,
 		Range:    []byte("some bytes"),
 		Money:    32.42,
+		When:     tm,
 	}
 
 	tbl2 := some{
@@ -126,7 +130,11 @@ func TestCrud(t *testing.T) {
 		}
 
 		if res[0].(some).Name != "Jim" {
-			t.Error("invalid read field")
+			t.Error("invalid read")
+		}
+
+		if res[0].(some).When != tm {
+			t.Error("invalid read")
 		}
 
 		err = piv.Update(&some{Name: "Jack"}, id[0])
@@ -167,7 +175,6 @@ func TestCrud(t *testing.T) {
 				t.Fatal("res should have 0 element")
 			}
 		})
-
 	})
 
 	t.Run("test model", func(t *testing.T) {
