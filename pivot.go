@@ -58,7 +58,6 @@ func (p *Pivot) Tidy() {
 	p.db.Close()
 }
 
-// write ...
 func (p *Pivot) write(s *shape, v vals) (string, error) {
 
 	k := key{
@@ -67,26 +66,41 @@ func (p *Pivot) write(s *shape, v vals) (string, error) {
 		id:     xid.New().String(),
 	}
 
-	err := p.db.set(k.rec(), []byte{0})
+	err := p.db.Update(func(txn *badger.Txn) error {
+		err := txn.Set([]byte(k.rec()), []byte{0})
+		if err != nil {
+			return err
+		}
+
+		for f := range s.fields {
+			if f == "ID" {
+				continue
+			}
+			_, k.index = s.index[f]
+			k.field = f
+
+			bts, err := toBytes(v[f])
+			if err != nil {
+				return err
+			}
+
+			if k.index {
+				err = txn.Set([]byte(k.inx(bts)), []byte{0})
+				if err != nil {
+					return err
+				}
+			}
+
+			err = txn.Set([]byte(k.fld()), bts)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
 	if err != nil {
 		return "", err
-	}
-
-	for f := range s.fields {
-		if f == "ID" {
-			continue
-		}
-		_, k.index = s.index[f]
-		k.field = f
-
-		bts, err := toBytes(v[f])
-		if err != nil {
-			return "", err
-		}
-		err = p.db.put(&k, bts)
-		if err != nil {
-			return "", err
-		}
 	}
 
 	return k.id, nil
