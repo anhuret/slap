@@ -19,68 +19,33 @@ func initDB(path string) (*DB, error) {
 	return &DB{db}, nil
 }
 
-func (db *DB) put(k *key, value []byte) error {
-	dks := k.fld()
-
-	err := db.Update(func(txn *badger.Txn) error {
-		if k.index {
-			item, err := txn.Get([]byte(dks))
-			if err != nil && err != badger.ErrKeyNotFound {
-				return err
-			}
-			if err == nil {
-				ov, err := item.ValueCopy(nil)
-				if err != nil {
-					return err
-				}
-
-				err = txn.Delete([]byte(k.inx(ov)))
-				if err != nil {
-					return err
-				}
-			}
-
-			err = txn.Set([]byte(k.inx(value)), []byte{0})
-			if err != nil {
-				return err
-			}
-		}
-		err := txn.Set([]byte(dks), value)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func (db *DB) set(k string, v []byte) error {
 	return db.Update(func(txn *badger.Txn) error {
 		return txn.Set([]byte(k), v)
 	})
 }
 
-func (db *DB) get(key string) ([]byte, error) {
-	var value []byte
+func (db *DB) get(k string) ([]byte, error) {
+	var v []byte
+
 	err := db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(key))
+		i, err := txn.Get([]byte(k))
 		if err != nil {
 			return err
 		}
-		value, err = item.ValueCopy(nil)
+
+		v, err = i.ValueCopy(nil)
 		if err != nil {
 			return err
 		}
+
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
-	return value, nil
+
+	return v, nil
 }
 
 func (db *DB) scan(stub string) []string {

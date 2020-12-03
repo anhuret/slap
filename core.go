@@ -129,21 +129,50 @@ func (p *Pivot) Update(data interface{}, ids ...string) error {
 	for _, id := range ids {
 		k.id = id
 
-		for f := range s.fields {
-			if f == "ID" {
-				continue
-			}
-			_, k.index = s.index[f]
-			k.field = f
+		err = p.db.Update(func(txn *badger.Txn) error {
 
-			bts, err := toBytes(v[f])
-			if err != nil {
-				return err
+			for f := range s.fields {
+				if f == "ID" {
+					continue
+				}
+				_, k.index = s.index[f]
+				k.field = f
+
+				bts, err := toBytes(v[f])
+				if err != nil {
+					return err
+				}
+
+				if k.index {
+					i, err := txn.Get([]byte(k.fld()))
+					if err != nil {
+						return err
+					}
+
+					err = i.Value(func(v []byte) error {
+						return txn.Delete([]byte(k.inx(v)))
+					})
+					if err != nil {
+						return err
+					}
+
+					err = txn.Set([]byte(k.inx(bts)), []byte{0})
+					if err != nil {
+						return err
+					}
+				}
+
+				err = txn.Set([]byte(k.fld()), bts)
+				if err != nil {
+					return err
+				}
 			}
-			err = p.db.put(&k, bts)
-			if err != nil {
-				return err
-			}
+
+			return nil
+		})
+
+		if err != nil {
+			return err
 		}
 	}
 
