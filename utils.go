@@ -54,10 +54,10 @@ func model(x interface{}, z bool) (*shape, error) {
 	return &s, nil
 }
 
-func (s *shape) values(x interface{}) vals {
+func (s *shape) values(x interface{}) (vals, error) {
 	val := reflect.Indirect(reflect.ValueOf(x))
 	if val.Kind() != reflect.Struct {
-		return nil
+		return nil, ErrInvalidParameter
 	}
 
 	vls := make(vals)
@@ -66,7 +66,7 @@ func (s *shape) values(x interface{}) vals {
 		vls[f] = val.FieldByName(f).Interface()
 	}
 
-	return vls
+	return vls, nil
 }
 
 type key struct {

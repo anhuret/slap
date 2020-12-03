@@ -179,9 +179,9 @@ func TestCrud(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		v := m.values(&tbl1)
-		if v == nil {
-			t.Error("should not be nil")
+		v, err := m.values(&tbl1)
+		if err != nil {
+			t.Error(err)
 		}
 		if v["Address"].(string) != "St Leonards" {
 			t.Error("value conversion")
@@ -194,9 +194,9 @@ func TestCrud(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		v = m.values(&tbl3)
-		if v == nil {
-			t.Error("should not be nil")
+		v, err = m.values(&tbl3)
+		if err != nil {
+			t.Error(err)
 		}
 		if _, ok := v["Name"]; ok {
 			t.Error("zero value present")
@@ -206,9 +206,9 @@ func TestCrud(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		v = m.values(&tbl4)
-		if v == nil {
-			t.Error("should not be nil")
+		v, err = m.values(&tbl4)
+		if err != nil {
+			t.Error(err)
 		}
 		if v["Name"].(string) != "" {
 			t.Error("value conversion")

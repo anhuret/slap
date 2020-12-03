@@ -24,9 +24,9 @@ func (p *Pivot) Write(data interface{}) ([]string, error) {
 			return ids, err
 		}
 
-		v := s.values(ind.Interface())
-		if v == nil {
-			return ids, ErrTypeConversion
+		v, err := s.values(ind.Interface())
+		if err != nil {
+			return ids, err
 		}
 
 		id, err := p.write(s, v)
@@ -46,14 +46,16 @@ func (p *Pivot) Write(data interface{}) ([]string, error) {
 
 		var v vals
 		for i := 0; i < ind.Len(); i++ {
-			v = s.values(ind.Index(i).Interface())
-			if v == nil {
-				return ids, ErrTypeConversion
+			v, err = s.values(ind.Index(i).Interface())
+			if err != nil {
+				return ids, err
 			}
+
 			id, err := p.write(s, v)
 			if err != nil {
 				return ids, err
 			}
+
 			ids = append(ids, id)
 		}
 	default:
@@ -116,9 +118,10 @@ func (p *Pivot) Update(data interface{}, ids ...string) error {
 	if err != nil {
 		return err
 	}
-	v := s.values(data)
-	if v == nil {
-		return ErrTypeConversion
+
+	v, err := s.values(data)
+	if err != nil {
+		return err
 	}
 
 	k := key{

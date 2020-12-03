@@ -155,9 +155,10 @@ func (p *Pivot) where(x interface{}) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	v := s.values(x)
-	if v == nil {
-		return nil, ErrTypeConversion
+
+	v, err := s.values(x)
+	if err != nil {
+		return nil, err
 	}
 
 	k := key{
