@@ -2,6 +2,8 @@ package slap
 
 import (
 	"reflect"
+
+	"github.com/dgraph-io/badger/v2"
 )
 
 // Write accepts struct or slice of struct pointers
@@ -77,14 +79,31 @@ func (p *Pivot) Delete(data interface{}, ids ...string) error {
 	for _, id := range ids {
 		k.id = id
 
-		for f := range s.fields {
-			k.field = f
+		err = p.db.Update(func(txn *badger.Txn) error {
+			for f := range s.fields {
+				k.field = f
 
-			err := p.db.rem(&k)
-			if err != nil {
-				return err
+				if k.index {
+					i, err := txn.Get([]byte(k.fld()))
+					if err != nil {
+						return err
+					}
+
+					err = i.Value(func(v []byte) error {
+						return txn.Delete([]byte(k.inx(v)))
+					})
+					if err != nil {
+						return err
+					}
+				}
+
+				err = txn.Delete([]byte(k.fld()))
+				if err != nil {
+					return err
+				}
 			}
-		}
+			return nil
+		})
 	}
 
 	return nil
