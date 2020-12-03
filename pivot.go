@@ -117,29 +117,43 @@ func (p *Pivot) read(s *shape, id string) (interface{}, error) {
 		id:     id,
 	}
 
-	for f, t := range s.fields {
-		if f == "ID" {
-			continue
-		}
-		k.field = f
+	err := p.db.View(func(txn *badger.Txn) error {
+		for f, t := range s.fields {
+			if f == "ID" {
+				continue
+			}
+			k.field = f
 
-		res, err := p.db.get(k.fld())
-		if err == badger.ErrKeyNotFound {
-			continue
-		}
-		if err != nil {
-			return nil, err
+			i, err := txn.Get([]byte(k.fld()))
+			if err == badger.ErrKeyNotFound {
+				continue
+			}
+			if err != nil {
+				return err
+			}
+
+			nul = true
+			fld := obj.FieldByName(f)
+
+			err = i.Value(func(v []byte) error {
+				x, err := fromBytes(v, t)
+				if err != nil {
+					return err
+				}
+
+				fld.Set(reflect.ValueOf(x))
+
+				return nil
+			})
+			if err != nil {
+				return err
+			}
 		}
 
-		nul = true
-		fld := obj.FieldByName(f)
-
-		x, err := fromBytes(res, t)
-		if err != nil {
-			return nil, err
-		}
-
-		fld.Set(reflect.ValueOf(x))
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	if nul {
@@ -147,7 +161,7 @@ func (p *Pivot) read(s *shape, id string) (interface{}, error) {
 		return obj.Interface(), nil
 	}
 
-	return nil, nil
+	return nil, nil // FIX: return should not be nil with error nil
 }
 
 func (p *Pivot) where(x interface{}) ([]string, error) {
