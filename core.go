@@ -6,9 +6,9 @@ import (
 	"github.com/dgraph-io/badger/v2"
 )
 
-// Write accepts struct or slice of struct pointers
+// Create accepts struct or slice of struct pointers
 // Returns slice of record IDs saved
-func (p *Pivot) Write(data interface{}) ([]string, error) {
+func (p *Pivot) Create(data interface{}) ([]string, error) {
 	ids := []string{}
 	val := reflect.ValueOf(data)
 	if val.Type().Kind() != reflect.Ptr {
@@ -29,7 +29,7 @@ func (p *Pivot) Write(data interface{}) ([]string, error) {
 			return ids, err
 		}
 
-		id, err := p.write(s, v)
+		id, err := p.create(s, v)
 		if err != nil {
 			return ids, err
 		}
@@ -51,7 +51,7 @@ func (p *Pivot) Write(data interface{}) ([]string, error) {
 				return ids, err
 			}
 
-			id, err := p.write(s, v)
+			id, err := p.create(s, v)
 			if err != nil {
 				return ids, err
 			}
@@ -82,6 +82,14 @@ func (p *Pivot) Delete(data interface{}, ids ...string) error {
 		k.id = id
 
 		err = p.db.Update(func(txn *badger.Txn) error {
+			_, err := txn.Get([]byte(k.rec()))
+			if err == badger.ErrKeyNotFound {
+				return nil
+			}
+			if err != nil {
+				return err
+			}
+
 			for f := range s.fields {
 				k.field = f
 
@@ -220,4 +228,9 @@ func (p *Pivot) Select(x interface{}) ([]interface{}, error) {
 	}
 
 	return obs, nil
+}
+
+// WithDB ...
+func (p *Pivot) WithDB(f func(*badger.DB) error) (err error) {
+	return f(p.db.DB)
 }

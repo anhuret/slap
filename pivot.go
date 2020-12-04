@@ -58,7 +58,7 @@ func (p *Pivot) Tidy() {
 	p.db.Close()
 }
 
-func (p *Pivot) write(s *shape, v vals) (string, error) {
+func (p *Pivot) create(s *shape, v vals) (string, error) {
 
 	k := key{
 		schema: p.schema,
