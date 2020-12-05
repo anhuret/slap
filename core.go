@@ -91,6 +91,9 @@ func (p *Pivot) Delete(data interface{}, ids ...string) error {
 			}
 
 			for f := range s.fields {
+				if f == "ID" {
+					continue
+				}
 				k.field = f
 
 				if k.index {
@@ -151,7 +154,7 @@ func (p *Pivot) Update(data interface{}, ids ...string) error {
 
 			for f := range s.fields {
 				if f == "ID" {
-					continue
+					return ErrPrimaryIDUpdate
 				}
 				_, k.index = s.index[f]
 				k.field = f

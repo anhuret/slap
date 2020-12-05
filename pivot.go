@@ -31,7 +31,9 @@ var (
 	ErrReservedWord = errors.New("reserved identifier used")
 	// ErrNoPrimaryID ...
 	ErrNoPrimaryID = errors.New("primary ID field does not exist")
-	void           null
+	// ErrPrimaryIDUpdate ...
+	ErrPrimaryIDUpdate = errors.New("cannot update primary ID field")
+	void               null
 )
 
 const (
