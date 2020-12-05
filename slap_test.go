@@ -114,7 +114,7 @@ func TestCrud(t *testing.T) {
 			t.Fatal("id should have 1 element")
 		}
 
-		res, err := piv.Read(&some{}, id...)
+		res, err := piv.Read(&some{}, []string{}, id...)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -161,12 +161,57 @@ func TestCrud(t *testing.T) {
 			t.Error("invalid read")
 		}
 
+		res, err = piv.Read(&some{}, []string{"Name", "Address"}, id...)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if len(res) != 1 {
+			t.Fatal("res should have 1 element")
+		}
+
+		if res[0].(some).Address != "St Leonards" {
+			t.Error("invalid read")
+		}
+
+		if res[0].(some).Name != "Jim" {
+			t.Error("invalid read")
+		}
+
+		if res[0].(some).Universe != 0 {
+			t.Error("invalid read")
+		}
+
+		if res[0].(some).When == tm {
+			t.Error("invalid read")
+		}
+
+		if res[0].(some).Age != 0 {
+			t.Error("invalid read")
+		}
+
+		if res[0].(some).Life != false {
+			t.Error("invalid read")
+		}
+
+		if string(res[0].(some).Range) != "" {
+			t.Error("invalid read")
+		}
+
+		if res[0].(some).Money != 0.0 {
+			t.Error("invalid read")
+		}
+
+		if res[0].(some).ID != id[0] {
+			t.Error("invalid read")
+		}
+
 		ids, err := piv.Create(&sl)
 		if err != nil {
 			t.Error(err)
 		}
 
-		res2, err := piv.Read(&some{}, ids...)
+		res2, err := piv.Read(&some{}, []string{}, ids...)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -184,7 +229,7 @@ func TestCrud(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		res, err := piv.Read(&some{}, id[0])
+		res, err := piv.Read(&some{}, []string{}, id[0])
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -197,12 +242,16 @@ func TestCrud(t *testing.T) {
 			t.Error("invalid field read")
 		}
 
-		err = piv.Update(&some{Name: "Ruslan", Address: "Jersey St"}, id[0])
+		if res[0].(some).ID != id[0] {
+			t.Error("invalid field read")
+		}
+
+		err = piv.Update(&some{Name: "Ruslan", Address: "Jersey St", ID: "blah"}, id[0])
 		if err != nil {
 			t.Error(err)
 		}
 
-		res, err = piv.Read(&some{}, id[0])
+		res, err = piv.Read(&some{}, []string{}, id[0])
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -212,6 +261,10 @@ func TestCrud(t *testing.T) {
 		}
 
 		if res[0].(some).Address != "Jersey St" {
+			t.Error("invalid field update")
+		}
+
+		if res[0].(some).ID != id[0] {
 			t.Error("invalid field update")
 		}
 	})
@@ -224,7 +277,7 @@ func TestCrud(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		res, err := piv.Read(&some{}, id[0])
+		res, err := piv.Read(&some{}, []string{}, id[0])
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -238,7 +291,7 @@ func TestCrud(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		res, err = piv.Read(&some{}, id[0])
+		res, err = piv.Read(&some{}, []string{}, id[0])
 		if err != ErrNoRecord {
 			t.Fatal("should display correct error")
 		}
@@ -291,6 +344,11 @@ func TestCrud(t *testing.T) {
 			t.Error("value conversion")
 		}
 
+		type s1 struct{ Name string }
+		m, err = model(&s1{}, true)
+		if err != ErrNoPrimaryID {
+			t.Fatal("must retuen correct error")
+		}
 	})
 
 	t.Run("test where", func(t *testing.T) {
@@ -303,7 +361,7 @@ func TestCrud(t *testing.T) {
 
 		res, err := piv.where(some{Address: "Romsey St"})
 
-		rd, err := piv.Read(&some{}, res...)
+		rd, err := piv.Read(&some{}, []string{}, res...)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -325,7 +383,7 @@ func TestCrud(t *testing.T) {
 			t.Error(err)
 		}
 
-		res, err := piv.Select(&some{Address: "St Leonards"})
+		res, err := piv.Select(&some{Address: "St Leonards"}, []string{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -336,7 +394,7 @@ func TestCrud(t *testing.T) {
 			t.Fatal("res should have 2 elements")
 		}
 
-		res, err = piv.Select(&some{Address: "St Leonards", Age: 46})
+		res, err = piv.Select(&some{Address: "St Leonards", Age: 46}, []string{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -347,7 +405,7 @@ func TestCrud(t *testing.T) {
 			t.Fatal("res should have 1 elements")
 		}
 
-		res, err = piv.Select(&some{Address: "Romsey St"})
+		res, err = piv.Select(&some{Address: "Romsey St"}, []string{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -442,7 +500,7 @@ func TestTime(t *testing.T) {
 		t.Error(err)
 	}
 
-	res, err := piv.Read(&tmc{}, id...)
+	res, err := piv.Read(&tmc{}, []string{}, id...)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -31,9 +31,7 @@ var (
 	ErrReservedWord = errors.New("reserved identifier used")
 	// ErrNoPrimaryID ...
 	ErrNoPrimaryID = errors.New("primary ID field does not exist")
-	// ErrPrimaryIDUpdate ...
-	ErrPrimaryIDUpdate = errors.New("cannot update primary ID field")
-	void               null
+	void           null
 )
 
 const (
@@ -75,9 +73,6 @@ func (p *Pivot) create(s *shape, v vals) (string, error) {
 		}
 
 		for f := range s.fields {
-			if f == "ID" {
-				continue
-			}
 			_, k.index = s.index[f]
 			k.field = f
 
@@ -127,11 +122,9 @@ func (p *Pivot) read(s *shape, id string) (interface{}, error) {
 			return err
 		}
 
+		obj.FieldByName("ID").Set(reflect.ValueOf(id))
+
 		for f, t := range s.fields {
-			if f == "ID" {
-				obj.FieldByName("ID").Set(reflect.ValueOf(id))
-				continue
-			}
 			k.field = f
 
 			i, err := txn.Get([]byte(k.fld()))

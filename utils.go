@@ -19,17 +19,17 @@ func model(x interface{}, z bool) (*shape, error) {
 	if val.Kind() != reflect.Struct {
 		return nil, ErrInvalidParameter
 	}
-	typ := val.Type()
 
+	if !val.FieldByName("ID").IsValid() {
+		return nil, ErrNoPrimaryID
+	}
+
+	typ := val.Type()
 	fields := make(map[string]string)
 	index := make(map[string]null)
-	var id bool
 
 	for i := 0; i < typ.NumField(); i++ {
 		f := typ.Field(i)
-		if f.Name == "ID" {
-			id = true
-		}
 
 		if !z && val.Field(i).IsZero() {
 			continue
@@ -41,8 +41,8 @@ func model(x interface{}, z bool) (*shape, error) {
 		}
 	}
 
-	if !id {
-		return nil, ErrNoPrimaryID
+	if _, ok := fields["ID"]; ok {
+		delete(fields, "ID")
 	}
 
 	s := shape{
@@ -160,5 +160,23 @@ func fromBytes(bts []byte, t string) (interface{}, error) {
 		return x, nil
 	default:
 		return nil, ErrInvalidParameter
+	}
+}
+
+func (s *shape) filter(f []string) {
+	if len(f) == 0 {
+		return
+	}
+
+	fields := make(map[string]string)
+
+	for _, i := range f {
+		if _, ok := s.fields[i]; ok {
+			fields[i] = s.fields[i]
+		}
+	}
+
+	if len(fields) != 0 {
+		s.fields = fields
 	}
 }

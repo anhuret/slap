@@ -91,9 +91,6 @@ func (p *Pivot) Delete(data interface{}, ids ...string) error {
 			}
 
 			for f := range s.fields {
-				if f == "ID" {
-					continue
-				}
 				k.field = f
 
 				if k.index {
@@ -153,9 +150,6 @@ func (p *Pivot) Update(data interface{}, ids ...string) error {
 			}
 
 			for f := range s.fields {
-				if f == "ID" {
-					return ErrPrimaryIDUpdate
-				}
 				_, k.index = s.index[f]
 				k.field = f
 
@@ -204,12 +198,14 @@ func (p *Pivot) Update(data interface{}, ids ...string) error {
 
 // Read retrieves one or many records with given IDs
 // Returns slice of interfaces
-func (p *Pivot) Read(data interface{}, ids ...string) ([]interface{}, error) {
+func (p *Pivot) Read(data interface{}, ftr []string, ids ...string) ([]interface{}, error) {
 	rec := []interface{}{}
 	s, err := model(data, true)
 	if err != nil {
 		return rec, err
 	}
+
+	s.filter(ftr)
 
 	for _, id := range ids {
 		x, err := p.read(s, id)
@@ -227,14 +223,14 @@ func (p *Pivot) Read(data interface{}, ids ...string) ([]interface{}, error) {
 
 // Select retrieves records ANDing non zero values
 // Returns slice of interfaces
-func (p *Pivot) Select(x interface{}) ([]interface{}, error) {
+func (p *Pivot) Select(x interface{}, ftr []string) ([]interface{}, error) {
 	val := reflect.Indirect(reflect.ValueOf(x)).Interface()
 	ids, err := p.where(val)
 	if err != nil {
 		return nil, err
 	}
 
-	obs, err := p.Read(x, ids...)
+	obs, err := p.Read(x, ftr, ids...)
 	if err != nil {
 		return nil, err
 	}
