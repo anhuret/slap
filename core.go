@@ -141,6 +141,13 @@ func (p *Pivot) Update(data interface{}, ids ...string) error {
 		k.id = id
 
 		err = p.db.Update(func(txn *badger.Txn) error {
+			_, err := txn.Get([]byte(k.rec()))
+			if err == badger.ErrKeyNotFound {
+				return ErrNoRecord
+			}
+			if err != nil {
+				return err
+			}
 
 			for f := range s.fields {
 				if f == "ID" {
