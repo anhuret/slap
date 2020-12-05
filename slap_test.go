@@ -161,8 +161,8 @@ func TestCrud(t *testing.T) {
 			}
 
 			res, err = piv.Read(&some{}, id[0])
-			if err != nil {
-				t.Fatal(err)
+			if err != ErrNoRecord {
+				t.Fatal("should display correct error")
 			}
 			if res == nil {
 				t.Fatal("result should not be nil")

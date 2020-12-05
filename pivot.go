@@ -108,7 +108,6 @@ func (p *Pivot) create(s *shape, v vals) (string, error) {
 
 // read ...
 func (p *Pivot) read(s *shape, id string) (interface{}, error) {
-	var nul bool
 	obj := reflect.New(s.cast).Elem()
 
 	k := key{
@@ -118,8 +117,17 @@ func (p *Pivot) read(s *shape, id string) (interface{}, error) {
 	}
 
 	err := p.db.View(func(txn *badger.Txn) error {
+		_, err := txn.Get([]byte(k.rec()))
+		if err == badger.ErrKeyNotFound {
+			return ErrNoRecord
+		}
+		if err != nil {
+			return err
+		}
+
 		for f, t := range s.fields {
 			if f == "ID" {
+				obj.FieldByName("ID").Set(reflect.ValueOf(id))
 				continue
 			}
 			k.field = f
@@ -132,7 +140,6 @@ func (p *Pivot) read(s *shape, id string) (interface{}, error) {
 				return err
 			}
 
-			nul = true
 			fld := obj.FieldByName(f)
 
 			err = i.Value(func(v []byte) error {
@@ -156,12 +163,7 @@ func (p *Pivot) read(s *shape, id string) (interface{}, error) {
 		return nil, err
 	}
 
-	if nul {
-		obj.FieldByName("ID").Set(reflect.ValueOf(id))
-		return obj.Interface(), nil
-	}
-
-	return nil, nil // FIX: return should not be nil with error nil
+	return obj.Interface(), nil
 }
 
 func (p *Pivot) where(x interface{}) ([]string, error) {
