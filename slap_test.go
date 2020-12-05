@@ -125,7 +125,15 @@ func TestCrud(t *testing.T) {
 			t.Fatal("res should have 1 element")
 		}
 
+		if res[0].(some).Address != "St Leonards" {
+			t.Error("invalid read")
+		}
+
 		if res[0].(some).Name != "Jim" {
+			t.Error("invalid read")
+		}
+
+		if res[0].(some).Universe != 424242 {
 			t.Error("invalid read")
 		}
 
@@ -137,7 +145,59 @@ func TestCrud(t *testing.T) {
 			t.Error("invalid read")
 		}
 
-		err = piv.Update(&some{Name: "Jack"}, id[0])
+		if res[0].(some).Age != 60 {
+			t.Error("invalid read")
+		}
+
+		if res[0].(some).Life != true {
+			t.Error("invalid read")
+		}
+
+		if string(res[0].(some).Range) != "some bytes" {
+			t.Error("invalid read")
+		}
+
+		if res[0].(some).Money != 32.42 {
+			t.Error("invalid read")
+		}
+
+		ids, err := piv.Create(&sl)
+		if err != nil {
+			t.Error(err)
+		}
+
+		res2, err := piv.Read(&some{}, ids...)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if len(res2) != 4 {
+			t.Error("invalid read")
+		}
+	})
+
+	t.Run("test update", func(t *testing.T) {
+		piv.db.DropAll()
+
+		id, err := piv.Create(&tbl4)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		res, err := piv.Read(&some{}, id[0])
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if res[0].(some).Name != "" {
+			t.Error("invalid field read")
+		}
+
+		if res[0].(some).Address != "Romsey St" {
+			t.Error("invalid field read")
+		}
+
+		err = piv.Update(&some{Name: "Ruslan", Address: "Jersey St"}, id[0])
 		if err != nil {
 			t.Error(err)
 		}
@@ -146,31 +206,48 @@ func TestCrud(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+
+		if res[0].(some).Name != "Ruslan" {
+			t.Error("invalid field update")
+		}
+
+		if res[0].(some).Address != "Jersey St" {
+			t.Error("invalid field update")
+		}
+	})
+
+	t.Run("test delete", func(t *testing.T) {
+		piv.db.DropAll()
+
+		id, err := piv.Create(&tbl3)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		res, err := piv.Read(&some{}, id[0])
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if res[0].(some).Age != 25 {
+			t.Error("invalid field read")
+		}
+
+		err = piv.Delete(&some{}, id[0])
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		res, err = piv.Read(&some{}, id[0])
+		if err != ErrNoRecord {
+			t.Fatal("should display correct error")
+		}
 		if res == nil {
 			t.Fatal("result should not be nil")
 		}
-
-		if res[0].(some).Name != "Jack" {
-			t.Error("invalid update field")
+		if len(res) != 0 {
+			t.Fatal("res should have 0 element")
 		}
-
-		t.Run("test delete", func(t *testing.T) {
-			err = piv.Delete(&some{}, id[0])
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			res, err = piv.Read(&some{}, id[0])
-			if err != ErrNoRecord {
-				t.Fatal("should display correct error")
-			}
-			if res == nil {
-				t.Fatal("result should not be nil")
-			}
-			if len(res) != 0 {
-				t.Fatal("res should have 0 element")
-			}
-		})
 	})
 
 	t.Run("test model", func(t *testing.T) {
@@ -216,7 +293,7 @@ func TestCrud(t *testing.T) {
 
 	})
 
-	t.Run("test index", func(t *testing.T) {
+	t.Run("test where", func(t *testing.T) {
 		piv.db.DropAll()
 
 		_, err = piv.Create(&sl)
