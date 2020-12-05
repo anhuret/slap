@@ -112,7 +112,7 @@ func (p *Pivot) Delete(data interface{}, ids ...string) error {
 					return err
 				}
 			}
-			return nil
+			return txn.Delete([]byte(k.rec()))
 		})
 	}
 
@@ -155,21 +155,23 @@ func (p *Pivot) Update(data interface{}, ids ...string) error {
 				}
 
 				if k.index {
-					i, err := txn.Get([]byte(k.fld()))
-					if err != nil {
-						return err
-					}
-
-					err = i.Value(func(v []byte) error {
-						return txn.Delete([]byte(k.inx(v)))
-					})
-					if err != nil {
-						return err
-					}
-
 					err = txn.Set([]byte(k.inx(bts)), []byte{0})
 					if err != nil {
 						return err
+					}
+
+					i, err := txn.Get([]byte(k.fld()))
+					if err != nil && err != badger.ErrKeyNotFound {
+						return err
+					}
+
+					if err == nil {
+						err = i.Value(func(v []byte) error {
+							return txn.Delete([]byte(k.inx(v)))
+						})
+						if err != nil {
+							return err
+						}
 					}
 				}
 
