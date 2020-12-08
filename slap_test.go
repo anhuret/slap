@@ -1,9 +1,13 @@
 package slap
 
 import (
+	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/dgraph-io/badger/v2"
 )
 
 func TestCrud(t *testing.T) {
@@ -508,4 +512,50 @@ func TestTime(t *testing.T) {
 	if res[0].(tmc).When != w {
 		t.Error("time should match")
 	}
+}
+
+func TestLimit(t *testing.T) {
+	piv := New("/tmp/badger", "sparkle")
+	defer piv.db.Close()
+	//piv.db.DropAll()
+
+	type tmc struct {
+		ID    string
+		Name  string
+		Age   int
+		Count int
+	}
+	/*
+		acc := []tmc{}
+
+		for i := 1; i < 6; i++ {
+			b := tmc{Name: "Ruslan", Age: 46, Count: i}
+			acc = append(acc, b)
+		}
+
+		_, err := piv.Create(&acc)
+		if err != nil {
+			t.Error(err)
+		}
+	*/
+	piv.db.View(func(txn *badger.Txn) error {
+		it := txn.NewIterator(badger.DefaultIteratorOptions)
+		defer it.Close()
+		prefix := []byte(piv.schema)
+
+		//init := "sparkle:tmc:bv7cohk31kd8410g03c0"
+		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+			item := it.Item()
+			k := item.Key()
+
+			ss := strings.Split(string(k), ":")
+			if len(ss) != 3 {
+				continue
+			}
+			fmt.Printf("KEY: %s\n", k)
+
+		}
+		return nil
+	})
+
 }
