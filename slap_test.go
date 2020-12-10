@@ -517,7 +517,7 @@ func TestTime(t *testing.T) {
 func TestLimit(t *testing.T) {
 	piv := New("/tmp/badger", "sparkle")
 	defer piv.db.Close()
-	//piv.db.DropAll()
+	piv.db.DropAll()
 
 	type tmc struct {
 		ID    string
@@ -525,36 +525,67 @@ func TestLimit(t *testing.T) {
 		Age   int
 		Count int
 	}
-	/*
-		acc := []tmc{}
 
-		for i := 1; i < 6; i++ {
-			b := tmc{Name: "Ruslan", Age: 46, Count: i}
-			acc = append(acc, b)
-		}
+	acc := tmc{}
+	rec := []reflect.Value{}
+	res := []interface{}{}
+	shape, _ := model(acc, true)
 
-		_, err := piv.Create(&acc)
-		if err != nil {
-			t.Error(err)
-		}
-	*/
+	arr := []tmc{}
+	for i := 1; i < 6; i++ {
+		b := tmc{Name: "Ruslan", Age: 46, Count: i}
+		arr = append(arr, b)
+	}
+
+	_, err := piv.Create(&arr)
+	if err != nil {
+		t.Error(err)
+	}
+
+	limit := 3
+
 	piv.db.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer it.Close()
 		prefix := []byte(piv.schema)
 
-		//init := "sparkle:tmc:bv7cohk31kd8410g03c0"
-		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+		for it.Rewind(); it.Valid(); it.Next() {
+			item := it.Item()
+			k := item.Key()
+			fmt.Println(string(k))
+		}
+
+		var obj reflect.Value
+
+		for it.Seek(prefix); it.ValidForPrefix(prefix) && limit > 0; it.Next() {
 			item := it.Item()
 			k := item.Key()
 
 			ss := strings.Split(string(k), ":")
-			if len(ss) != 3 {
+
+			if len(ss) == 3 {
+				limit--
+				obj = reflect.New(reflect.TypeOf(acc))
+				obj.Elem().FieldByName("ID").Set(reflect.ValueOf(ss[2]))
+				rec = append(rec, obj)
 				continue
 			}
-			fmt.Printf("KEY: %s\n", k)
 
+			item.Value(func(v []byte) error {
+				x, err := fromBytes(v, shape.fields[ss[3]])
+				if err != nil {
+					return err
+				}
+
+				obj.Elem().FieldByName(ss[3]).Set(reflect.ValueOf(x))
+				return nil
+			})
 		}
+
+		for _, p := range rec {
+			res = append(res, reflect.Indirect(p).Interface())
+		}
+		fmt.Printf("RES: %v\n", res)
 		return nil
 	})
 
