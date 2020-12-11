@@ -527,7 +527,6 @@ func TestLimit(t *testing.T) {
 	}
 
 	acc := tmc{}
-	rec := []reflect.Value{}
 	res := []interface{}{}
 	shape, _ := model(acc, true)
 
@@ -549,13 +548,7 @@ func TestLimit(t *testing.T) {
 		defer it.Close()
 		prefix := []byte(piv.schema)
 
-		for it.Rewind(); it.Valid(); it.Next() {
-			item := it.Item()
-			k := item.Key()
-			fmt.Println(string(k))
-		}
-
-		var obj reflect.Value
+		col := []string{}
 
 		for it.Seek(prefix); it.ValidForPrefix(prefix) && limit > 0; it.Next() {
 			item := it.Item()
@@ -563,28 +556,52 @@ func TestLimit(t *testing.T) {
 
 			ss := strings.Split(string(k), ":")
 
-			if len(ss) == 3 {
-				limit--
-				obj = reflect.New(reflect.TypeOf(acc))
-				obj.Elem().FieldByName("ID").Set(reflect.ValueOf(ss[2]))
-				rec = append(rec, obj)
+			if len(ss) != 3 {
 				continue
 			}
 
-			item.Value(func(v []byte) error {
-				x, err := fromBytes(v, shape.fields[ss[3]])
+			col = append(col, ss[2])
+			limit--
+		}
+
+		kk := key{
+			schema: piv.schema,
+			table:  shape.cast.Name(),
+		}
+
+		for _, id := range col {
+			kk.id = id
+			obj := reflect.New(shape.cast).Elem()
+			obj.FieldByName("ID").Set(reflect.ValueOf(id))
+
+			for f, t := range shape.fields {
+				kk.field = f
+
+				i, err := txn.Get([]byte(kk.fld()))
+				if err == badger.ErrKeyNotFound {
+					continue
+				}
 				if err != nil {
 					return err
 				}
 
-				obj.Elem().FieldByName(ss[3]).Set(reflect.ValueOf(x))
-				return nil
-			})
+				err = i.Value(func(v []byte) error {
+					x, err := fromBytes(v, t)
+					if err != nil {
+						return err
+					}
+					obj.FieldByName(f).Set(reflect.ValueOf(x))
+					return nil
+				})
+				if err != nil {
+					return err
+				}
+
+			}
+
+			res = append(res, obj.Interface())
 		}
 
-		for _, p := range rec {
-			res = append(res, reflect.Indirect(p).Interface())
-		}
 		fmt.Printf("RES: %v\n", res)
 		return nil
 	})
