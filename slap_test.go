@@ -1,13 +1,9 @@
 package slap
 
 import (
-	"fmt"
 	"reflect"
-	"strings"
 	"testing"
 	"time"
-
-	"github.com/dgraph-io/badger/v2"
 )
 
 func TestCrud(t *testing.T) {
@@ -514,7 +510,7 @@ func TestTime(t *testing.T) {
 	}
 }
 
-func TestLimit(t *testing.T) {
+func TestTake(t *testing.T) {
 	piv := New("/tmp/badger", "sparkle")
 	defer piv.db.Close()
 	piv.db.DropAll()
@@ -525,10 +521,6 @@ func TestLimit(t *testing.T) {
 		Age   int
 		Count int
 	}
-
-	acc := tmc{}
-	res := []interface{}{}
-	shape, _ := model(acc, true)
 
 	arr := []tmc{}
 	for i := 1; i < 6; i++ {
@@ -541,69 +533,12 @@ func TestLimit(t *testing.T) {
 		t.Error(err)
 	}
 
-	limit := 3
+	limit := 4
 
-	piv.db.View(func(txn *badger.Txn) error {
-		it := txn.NewIterator(badger.DefaultIteratorOptions)
-		defer it.Close()
-		prefix := []byte(piv.schema)
+	res, err := piv.Take(&tmc{}, []string{"Name", "Count"}, limit)
 
-		col := []string{}
-
-		for it.Seek(prefix); it.ValidForPrefix(prefix) && limit > 0; it.Next() {
-			item := it.Item()
-			k := item.Key()
-
-			ss := strings.Split(string(k), ":")
-
-			if len(ss) != 3 {
-				continue
-			}
-
-			col = append(col, ss[2])
-			limit--
-		}
-
-		kk := key{
-			schema: piv.schema,
-			table:  shape.cast.Name(),
-		}
-
-		for _, id := range col {
-			kk.id = id
-			obj := reflect.New(shape.cast).Elem()
-			obj.FieldByName("ID").Set(reflect.ValueOf(id))
-
-			for f, t := range shape.fields {
-				kk.field = f
-
-				i, err := txn.Get([]byte(kk.fld()))
-				if err == badger.ErrKeyNotFound {
-					continue
-				}
-				if err != nil {
-					return err
-				}
-
-				err = i.Value(func(v []byte) error {
-					x, err := fromBytes(v, t)
-					if err != nil {
-						return err
-					}
-					obj.FieldByName(f).Set(reflect.ValueOf(x))
-					return nil
-				})
-				if err != nil {
-					return err
-				}
-
-			}
-
-			res = append(res, obj.Interface())
-		}
-
-		fmt.Printf("RES: %v\n", res)
-		return nil
-	})
+	if len(res) != limit {
+		t.Error("wrong limit return")
+	}
 
 }

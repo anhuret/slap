@@ -2,6 +2,7 @@ package slap
 
 import (
 	"reflect"
+	"strings"
 
 	"github.com/dgraph-io/badger/v2"
 )
@@ -241,4 +242,78 @@ func (p *Pivot) Select(x interface{}, ftr []string) ([]interface{}, error) {
 // WithDB ...
 func (p *Pivot) WithDB(f func(*badger.DB) error) (err error) {
 	return f(p.db.DB)
+}
+
+// Take ...
+func (p *Pivot) Take(table interface{}, filter []string, limit int) ([]interface{}, error) {
+	result := []interface{}{}
+	shape, err := model(table, true)
+	if err != nil {
+		return result, err
+	}
+
+	shape.filter(filter)
+
+	err = p.db.View(func(txn *badger.Txn) error {
+		itr := txn.NewIterator(badger.DefaultIteratorOptions)
+		defer itr.Close()
+		pfx := []byte(p.schema + ":" + shape.cast.Name())
+
+		ids := []string{}
+
+		for itr.Seek(pfx); itr.ValidForPrefix(pfx) && limit > 0; itr.Next() {
+			k := itr.Item().Key()
+			s := strings.Split(string(k), ":")
+			if len(s) != 3 {
+				continue
+			}
+
+			ids = append(ids, s[2])
+			limit--
+		}
+
+		kst := key{
+			schema: p.schema,
+			table:  shape.cast.Name(),
+		}
+
+		for _, id := range ids {
+			kst.id = id
+			obj := reflect.New(shape.cast).Elem()
+			obj.FieldByName("ID").Set(reflect.ValueOf(id))
+
+			for f, t := range shape.fields {
+				kst.field = f
+
+				i, err := txn.Get([]byte(kst.fld()))
+				if err == badger.ErrKeyNotFound {
+					continue
+				}
+				if err != nil {
+					return err
+				}
+
+				err = i.Value(func(v []byte) error {
+					x, err := fromBytes(v, t)
+					if err != nil {
+						return err
+					}
+					obj.FieldByName(f).Set(reflect.ValueOf(x))
+					return nil
+				})
+				if err != nil {
+					return err
+				}
+			}
+
+			result = append(result, obj.Interface())
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
