@@ -533,12 +533,28 @@ func TestTake(t *testing.T) {
 		t.Error(err)
 	}
 
-	limit := 4
+	for i := 1; i < 6; i++ {
 
-	res, err := piv.Take(&tmc{}, []string{"Name", "Count"}, limit)
+		res, err := piv.Take(&tmc{}, []string{"Name", "Count"}, i)
 
-	if len(res) != limit {
-		t.Error("wrong limit return")
+		if err != nil {
+			t.Error(err)
+		}
+		if len(res) != i {
+			t.Error("wrong limit return")
+		}
+
+		for i, r := range res {
+			s := r.(tmc)
+			if s.Name != "Ruslan" {
+				t.Error("conversion error")
+			}
+			if s.Count != i+1 {
+				t.Error("conversion error")
+			}
+			if s.Age != 0 {
+				t.Error("conversion error")
+			}
+		}
 	}
-
 }
