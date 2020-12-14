@@ -31,7 +31,10 @@ var (
 	ErrReservedWord = errors.New("reserved identifier used")
 	// ErrNoPrimaryID ...
 	ErrNoPrimaryID = errors.New("primary ID field does not exist")
-	void           null
+	// ErrMalformedKey ...
+	ErrMalformedKey = errors.New("malformed key or zero key fields")
+
+	void null
 )
 
 const (
@@ -58,16 +61,24 @@ func (p *Pivot) Tidy() {
 	p.db.Close()
 }
 
+// Key
+func (p *Pivot) key(table string) *bow {
+	return &bow{
+		schema: p.schema,
+		table:  table,
+	}
+}
+
 func (p *Pivot) create(s *shape, v vals) (string, error) {
 
-	k := key{
+	k := bow{
 		schema: p.schema,
 		table:  s.cast.Name(),
 		id:     xid.New().String(),
 	}
 
 	err := p.db.Update(func(txn *badger.Txn) error {
-		err := txn.Set([]byte(k.rec()), []byte{0})
+		err := txn.Set([]byte(k.recordK()), []byte{0})
 		if err != nil {
 			return err
 		}
@@ -82,13 +93,13 @@ func (p *Pivot) create(s *shape, v vals) (string, error) {
 			}
 
 			if k.index {
-				err = txn.Set([]byte(k.inx(bts)), []byte{0})
+				err = txn.Set([]byte(k.indexK(bts)), []byte{0})
 				if err != nil {
 					return err
 				}
 			}
 
-			err = txn.Set([]byte(k.fld()), bts)
+			err = txn.Set([]byte(k.fieldK()), bts)
 			if err != nil {
 				return err
 			}
@@ -107,14 +118,14 @@ func (p *Pivot) create(s *shape, v vals) (string, error) {
 func (p *Pivot) read(s *shape, id string) (interface{}, error) {
 	obj := reflect.New(s.cast).Elem()
 
-	k := key{
+	k := bow{
 		schema: p.schema,
 		table:  s.cast.Name(),
 		id:     id,
 	}
 
 	err := p.db.View(func(txn *badger.Txn) error {
-		_, err := txn.Get([]byte(k.rec()))
+		_, err := txn.Get([]byte(k.recordK()))
 		if err == badger.ErrKeyNotFound {
 			return ErrNoRecord
 		}
@@ -127,7 +138,7 @@ func (p *Pivot) read(s *shape, id string) (interface{}, error) {
 		for f, t := range s.fields {
 			k.field = f
 
-			i, err := txn.Get([]byte(k.fld()))
+			i, err := txn.Get([]byte(k.fieldK()))
 			if err == badger.ErrKeyNotFound {
 				continue
 			}
@@ -172,7 +183,7 @@ func (p *Pivot) where(x interface{}) ([]string, error) {
 		return nil, err
 	}
 
-	k := key{
+	k := bow{
 		schema: p.schema,
 		table:  s.cast.Name(),
 	}
@@ -187,7 +198,7 @@ func (p *Pivot) where(x interface{}) ([]string, error) {
 			return nil, err
 		}
 
-		res := p.db.scan(k.stb(bts))
+		res := p.db.scan(k.stubK(bts))
 		set := gset.New()
 		for _, k := range res {
 			i := strings.Split(k, ":")

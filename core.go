@@ -74,7 +74,7 @@ func (p *Pivot) Delete(data interface{}, ids ...string) error {
 		return err
 	}
 
-	k := key{
+	k := bow{
 		schema: p.schema,
 		table:  s.cast.Name(),
 	}
@@ -83,7 +83,7 @@ func (p *Pivot) Delete(data interface{}, ids ...string) error {
 		k.id = id
 
 		err = p.db.Update(func(txn *badger.Txn) error {
-			_, err := txn.Get([]byte(k.rec()))
+			_, err := txn.Get([]byte(k.recordK()))
 			if err == badger.ErrKeyNotFound {
 				return nil
 			}
@@ -95,25 +95,25 @@ func (p *Pivot) Delete(data interface{}, ids ...string) error {
 				k.field = f
 
 				if k.index {
-					i, err := txn.Get([]byte(k.fld()))
+					i, err := txn.Get([]byte(k.fieldK()))
 					if err != nil {
 						return err
 					}
 
 					err = i.Value(func(v []byte) error {
-						return txn.Delete([]byte(k.inx(v)))
+						return txn.Delete([]byte(k.indexK(v)))
 					})
 					if err != nil {
 						return err
 					}
 				}
 
-				err = txn.Delete([]byte(k.fld()))
+				err = txn.Delete([]byte(k.fieldK()))
 				if err != nil {
 					return err
 				}
 			}
-			return txn.Delete([]byte(k.rec()))
+			return txn.Delete([]byte(k.recordK()))
 		})
 	}
 
@@ -133,7 +133,7 @@ func (p *Pivot) Update(data interface{}, ids ...string) error {
 		return err
 	}
 
-	k := key{
+	k := bow{
 		schema: p.schema,
 		table:  s.cast.Name(),
 	}
@@ -142,7 +142,7 @@ func (p *Pivot) Update(data interface{}, ids ...string) error {
 		k.id = id
 
 		err = p.db.Update(func(txn *badger.Txn) error {
-			_, err := txn.Get([]byte(k.rec()))
+			_, err := txn.Get([]byte(k.recordK()))
 			if err == badger.ErrKeyNotFound {
 				return ErrNoRecord
 			}
@@ -160,19 +160,19 @@ func (p *Pivot) Update(data interface{}, ids ...string) error {
 				}
 
 				if k.index {
-					err = txn.Set([]byte(k.inx(bts)), []byte{0})
+					err = txn.Set([]byte(k.indexK(bts)), []byte{0})
 					if err != nil {
 						return err
 					}
 
-					i, err := txn.Get([]byte(k.fld()))
+					i, err := txn.Get([]byte(k.fieldK()))
 					if err != nil && err != badger.ErrKeyNotFound {
 						return err
 					}
 
 					if err == nil {
 						err = i.Value(func(v []byte) error {
-							return txn.Delete([]byte(k.inx(v)))
+							return txn.Delete([]byte(k.indexK(v)))
 						})
 						if err != nil {
 							return err
@@ -180,7 +180,7 @@ func (p *Pivot) Update(data interface{}, ids ...string) error {
 					}
 				}
 
-				err = txn.Set([]byte(k.fld()), bts)
+				err = txn.Set([]byte(k.fieldK()), bts)
 				if err != nil {
 					return err
 				}
@@ -253,17 +253,18 @@ func (p *Pivot) Take(table interface{}, filter []string, seek string, limit int)
 	}
 
 	shape.filter(filter)
+	key := p.key(shape.name)
 
 	err = p.db.View(func(txn *badger.Txn) error {
 		itr := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer itr.Close()
-		pfx := p.schema + ":" + shape.cast.Name()
+		pfx := key.tableK()
 		sek := pfx
-		ids := []string{}
-
 		if seek != "" {
-			sek = pfx + ":" + seek
+			key.id = seek
+			sek = key.recordK()
 		}
+		ids := []string{}
 
 		count := limit
 		if limit == 0 {
@@ -283,7 +284,7 @@ func (p *Pivot) Take(table interface{}, filter []string, seek string, limit int)
 			}
 		}
 
-		kst := key{
+		kst := bow{
 			schema: p.schema,
 			table:  shape.cast.Name(),
 		}
@@ -296,7 +297,7 @@ func (p *Pivot) Take(table interface{}, filter []string, seek string, limit int)
 			for f, t := range shape.fields {
 				kst.field = f
 
-				i, err := txn.Get([]byte(kst.fld()))
+				i, err := txn.Get([]byte(kst.fieldK()))
 				if err == badger.ErrKeyNotFound {
 					continue
 				}

@@ -10,6 +10,7 @@ import (
 
 type shape struct {
 	cast   reflect.Type
+	name   string
 	fields map[string]string
 	index  map[string]null
 }
@@ -46,7 +47,8 @@ func model(x interface{}, z bool) (*shape, error) {
 	}
 
 	s := shape{
-		cast:   val.Type(),
+		cast:   typ,
+		name:   typ.Name(),
 		fields: fields,
 		index:  index,
 	}
@@ -69,7 +71,7 @@ func (s *shape) values(x interface{}) (vals, error) {
 	return vls, nil
 }
 
-type key struct {
+type bow struct {
 	schema string
 	table  string
 	id     string
@@ -77,20 +79,24 @@ type key struct {
 	index  bool
 }
 
-func (k *key) fld() string {
-	return strings.Join([]string{k.schema, k.table, k.id, k.field}, ":")
+func (b *bow) fieldK() string {
+	return strings.Join([]string{b.schema, b.table, b.id, b.field}, ":")
 }
 
-func (k *key) rec() string {
-	return strings.Join([]string{k.schema, k.table, k.id}, ":")
+func (b *bow) recordK() string {
+	return strings.Join([]string{b.schema, b.table, b.id}, ":")
 }
 
-func (k *key) inx(v []byte) string {
-	return strings.Join([]string{_indexSchema, k.table, k.field, string(v), k.id}, ":")
+func (b *bow) tableK() string {
+	return strings.Join([]string{b.schema, b.table}, ":")
 }
 
-func (k *key) stb(v []byte) string {
-	return strings.Join([]string{_indexSchema, k.table, k.field, string(v), ""}, ":")
+func (b *bow) indexK(v []byte) string {
+	return strings.Join([]string{_indexSchema, b.table, b.field, string(v), b.id}, ":")
+}
+
+func (b *bow) stubK(v []byte) string {
+	return strings.Join([]string{_indexSchema, b.table, b.field, string(v), ""}, ":")
 }
 
 func toBytes(x interface{}) ([]byte, error) {
