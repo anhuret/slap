@@ -2,7 +2,6 @@ package slap
 
 import (
 	"errors"
-	"log"
 	"reflect"
 	"strings"
 
@@ -11,8 +10,23 @@ import (
 	"github.com/rs/xid"
 )
 
-// Pivot ...
-type Pivot struct {
+// DB ...
+type DB struct {
+	*badger.DB
+}
+
+func initDB(path string) (*DB, error) {
+	ops := badger.DefaultOptions(path)
+	ops.Logger = nil
+	db, err := badger.Open(ops)
+	if err != nil {
+		return nil, err
+	}
+	return &DB{db}, nil
+}
+
+// Store ...
+type Store struct {
 	db     *DB
 	schema string
 }
@@ -41,35 +55,15 @@ const (
 	_indexSchema string = "system.index"
 )
 
-// New ...
-func New(path, schema string) *Pivot {
-	if strings.HasPrefix(schema, "system") {
-		log.Fatal(ErrReservedWord)
-	}
-	db, err := initDB(path)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return &Pivot{
-		db:     db,
-		schema: schema,
-	}
-}
-
-// Tidy ...
-func (p *Pivot) Tidy() {
-	p.db.Close()
-}
-
 // Key
-func (p *Pivot) key(table string) *bow {
+func (p *Store) key(table string) *bow {
 	return &bow{
 		schema: p.schema,
 		table:  table,
 	}
 }
 
-func (p *Pivot) create(s *shape, v vals) (string, error) {
+func (p *Store) create(s *shape, v vals) (string, error) {
 
 	k := bow{
 		schema: p.schema,
@@ -115,7 +109,7 @@ func (p *Pivot) create(s *shape, v vals) (string, error) {
 }
 
 // read ...
-func (p *Pivot) read(s *shape, id string) (interface{}, error) {
+func (p *Store) read(s *shape, id string) (interface{}, error) {
 	obj := reflect.New(s.cast).Elem()
 
 	k := bow{
@@ -172,7 +166,7 @@ func (p *Pivot) read(s *shape, id string) (interface{}, error) {
 	return obj.Interface(), nil
 }
 
-func (p *Pivot) where(x interface{}) ([]string, error) {
+func (p *Store) where(x interface{}) ([]string, error) {
 	s, err := model(x, false)
 	if err != nil {
 		return nil, err
@@ -216,4 +210,24 @@ func (p *Pivot) where(x interface{}) ([]string, error) {
 	default:
 		return acc[0].Intersect(acc[1:]...).ToSlice(), nil
 	}
+}
+
+func (db *DB) scan(stub string) []string {
+	var acc []string
+
+	db.View(func(txn *badger.Txn) error {
+		ops := badger.DefaultIteratorOptions
+		ops.PrefetchValues = false
+		itr := txn.NewIterator(ops)
+		defer itr.Close()
+		pfx := []byte(stub)
+
+		for itr.Seek(pfx); itr.ValidForPrefix(pfx); itr.Next() {
+			acc = append(acc, string(itr.Item().Key()))
+		}
+
+		return nil
+	})
+
+	return acc
 }

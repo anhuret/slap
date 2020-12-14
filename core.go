@@ -1,15 +1,36 @@
 package slap
 
 import (
+	"log"
 	"reflect"
 	"strings"
 
 	"github.com/dgraph-io/badger/v2"
 )
 
+// New ...
+func New(path, schema string) *Store {
+	if strings.HasPrefix(schema, "system") {
+		log.Fatal(ErrReservedWord)
+	}
+	db, err := initDB(path)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return &Store{
+		db:     db,
+		schema: schema,
+	}
+}
+
+// Tidy ...
+func (p *Store) Tidy() {
+	p.db.Close()
+}
+
 // Create accepts struct or slice of struct pointers
 // Returns slice of record IDs saved
-func (p *Pivot) Create(data interface{}) ([]string, error) {
+func (p *Store) Create(data interface{}) ([]string, error) {
 	ids := []string{}
 	val := reflect.ValueOf(data)
 	if val.Type().Kind() != reflect.Ptr {
@@ -68,7 +89,7 @@ func (p *Pivot) Create(data interface{}) ([]string, error) {
 
 // Delete removes one or many records with given IDs
 // Accepts a struct and variadic IDs
-func (p *Pivot) Delete(data interface{}, ids ...string) error {
+func (p *Store) Delete(data interface{}, ids ...string) error {
 	s, err := model(data, true)
 	if err != nil {
 		return err
@@ -122,7 +143,7 @@ func (p *Pivot) Delete(data interface{}, ids ...string) error {
 
 // Update mofifies records with given IDs
 // Non zero values are updated
-func (p *Pivot) Update(data interface{}, ids ...string) error {
+func (p *Store) Update(data interface{}, ids ...string) error {
 	s, err := model(data, false)
 	if err != nil {
 		return err
@@ -199,7 +220,7 @@ func (p *Pivot) Update(data interface{}, ids ...string) error {
 
 // Read retrieves one or many records with given IDs
 // Returns slice of interfaces
-func (p *Pivot) Read(data interface{}, ftr []string, ids ...string) ([]interface{}, error) {
+func (p *Store) Read(data interface{}, ftr []string, ids ...string) ([]interface{}, error) {
 	rec := []interface{}{}
 	s, err := model(data, true)
 	if err != nil {
@@ -224,7 +245,7 @@ func (p *Pivot) Read(data interface{}, ftr []string, ids ...string) ([]interface
 
 // Select retrieves records ANDing non zero values
 // Returns slice of interfaces
-func (p *Pivot) Select(x interface{}, ftr []string) ([]interface{}, error) {
+func (p *Store) Select(x interface{}, ftr []string) ([]interface{}, error) {
 	val := reflect.Indirect(reflect.ValueOf(x)).Interface()
 	ids, err := p.where(val)
 	if err != nil {
@@ -240,12 +261,12 @@ func (p *Pivot) Select(x interface{}, ftr []string) ([]interface{}, error) {
 }
 
 // WithDB ...
-func (p *Pivot) WithDB(f func(*badger.DB) error) (err error) {
+func (p *Store) WithDB(f func(*badger.DB) error) (err error) {
 	return f(p.db.DB)
 }
 
 // Take ...
-func (p *Pivot) Take(table interface{}, filter []string, seek string, limit int) ([]interface{}, error) {
+func (p *Store) Take(table interface{}, filter []string, seek string, limit int) ([]interface{}, error) {
 	result := []interface{}{}
 	shape, err := model(table, true)
 	if err != nil {
