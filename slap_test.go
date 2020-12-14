@@ -533,9 +533,10 @@ func TestTake(t *testing.T) {
 		t.Error(err)
 	}
 
+	var res []interface{}
 	for i := 1; i < 6; i++ {
 
-		res, err := piv.Take(&tmc{}, []string{"Name", "Count"}, i)
+		res, err = piv.Take(&tmc{}, []string{"Name", "Count"}, "", i)
 
 		if err != nil {
 			t.Error(err)
@@ -550,11 +551,28 @@ func TestTake(t *testing.T) {
 				t.Error("conversion error")
 			}
 			if s.Count != i+1 {
-				t.Error("conversion error")
+				t.Error("limit error")
 			}
 			if s.Age != 0 {
 				t.Error("conversion error")
 			}
 		}
 	}
+
+	limit := 2
+	id := res[limit].(tmc).ID
+	res, err = piv.Take(&tmc{}, []string{}, id, limit)
+	for i, r := range res {
+		s := r.(tmc)
+		if s.Name != "Ruslan" {
+			t.Error("conversion error")
+		}
+		if s.Age != 46 {
+			t.Error("conversion error")
+		}
+		if s.Count != i+limit+1 {
+			t.Error("skip/limit error")
+		}
+	}
+	t.Log(res)
 }

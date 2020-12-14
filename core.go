@@ -245,7 +245,7 @@ func (p *Pivot) WithDB(f func(*badger.DB) error) (err error) {
 }
 
 // Take ...
-func (p *Pivot) Take(table interface{}, filter []string, limit int) ([]interface{}, error) {
+func (p *Pivot) Take(table interface{}, filter []string, seek string, limit int) ([]interface{}, error) {
 	result := []interface{}{}
 	shape, err := model(table, true)
 	if err != nil {
@@ -257,11 +257,20 @@ func (p *Pivot) Take(table interface{}, filter []string, limit int) ([]interface
 	err = p.db.View(func(txn *badger.Txn) error {
 		itr := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer itr.Close()
-		pfx := []byte(p.schema + ":" + shape.cast.Name())
-
+		pfx := p.schema + ":" + shape.cast.Name()
+		sek := pfx
 		ids := []string{}
 
-		for itr.Seek(pfx); itr.ValidForPrefix(pfx) && limit > 0; itr.Next() {
+		if seek != "" {
+			sek = pfx + ":" + seek
+		}
+
+		count := limit
+		if limit == 0 {
+			count++
+		}
+
+		for itr.Seek([]byte(sek)); itr.ValidForPrefix([]byte(pfx)) && count > 0; itr.Next() {
 			k := itr.Item().Key()
 			s := strings.Split(string(k), ":")
 			if len(s) != 3 {
@@ -269,7 +278,9 @@ func (p *Pivot) Take(table interface{}, filter []string, limit int) ([]interface
 			}
 
 			ids = append(ids, s[2])
-			limit--
+			if limit != 0 {
+				count--
+			}
 		}
 
 		kst := key{
