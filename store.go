@@ -2,6 +2,7 @@ package slap
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 
@@ -20,7 +21,7 @@ func initDB(path string) (*DB, error) {
 	ops.Logger = nil
 	db, err := badger.Open(ops)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("initDB: %w", err)
 	}
 	return &DB{db}, nil
 }
@@ -74,7 +75,7 @@ func (p *Store) create(s *shape, v vals) (string, error) {
 	err := p.db.Update(func(txn *badger.Txn) error {
 		err := txn.Set([]byte(k.recordK()), []byte{0})
 		if err != nil {
-			return err
+			return fmt.Errorf("update: %w", err)
 		}
 
 		for f := range s.fields {
@@ -83,26 +84,26 @@ func (p *Store) create(s *shape, v vals) (string, error) {
 
 			bts, err := toBytes(v[f])
 			if err != nil {
-				return err
+				return fmt.Errorf("update: %w", err)
 			}
 
 			if k.index {
 				err = txn.Set([]byte(k.indexK(bts)), []byte{0})
 				if err != nil {
-					return err
+					return fmt.Errorf("update: %w", err)
 				}
 			}
 
 			err = txn.Set([]byte(k.fieldK()), bts)
 			if err != nil {
-				return err
+				return fmt.Errorf("update: %w", err)
 			}
 		}
 
 		return nil
 	})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("create: %w", err)
 	}
 
 	return k.id, nil
@@ -121,10 +122,10 @@ func (p *Store) read(s *shape, id string) (interface{}, error) {
 	err := p.db.View(func(txn *badger.Txn) error {
 		_, err := txn.Get([]byte(k.recordK()))
 		if err == badger.ErrKeyNotFound {
-			return ErrNoRecord
+			return fmt.Errorf("View: %w", ErrNoRecord)
 		}
 		if err != nil {
-			return err
+			return fmt.Errorf("View: %w", err)
 		}
 
 		obj.FieldByName("ID").Set(reflect.ValueOf(id))
@@ -137,7 +138,7 @@ func (p *Store) read(s *shape, id string) (interface{}, error) {
 				continue
 			}
 			if err != nil {
-				return err
+				return fmt.Errorf("View: %w", err)
 			}
 
 			fld := obj.FieldByName(f)
@@ -145,7 +146,7 @@ func (p *Store) read(s *shape, id string) (interface{}, error) {
 			err = i.Value(func(v []byte) error {
 				x, err := fromBytes(v, t)
 				if err != nil {
-					return err
+					return fmt.Errorf("Value: %w", err)
 				}
 
 				fld.Set(reflect.ValueOf(x))
@@ -153,14 +154,14 @@ func (p *Store) read(s *shape, id string) (interface{}, error) {
 				return nil
 			})
 			if err != nil {
-				return err
+				return fmt.Errorf("View: %w", err)
 			}
 		}
 
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("read: %w", err)
 	}
 
 	return obj.Interface(), nil
@@ -169,12 +170,12 @@ func (p *Store) read(s *shape, id string) (interface{}, error) {
 func (p *Store) where(x interface{}) ([]string, error) {
 	s, err := model(x, false)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("where: %w", err)
 	}
 
 	v, err := s.values(x)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("where: %w", err)
 	}
 
 	k := bow{
@@ -189,7 +190,7 @@ func (p *Store) where(x interface{}) ([]string, error) {
 
 		bts, err := toBytes(v[f])
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("where: %w", err)
 		}
 
 		res := p.db.scan(k.stubK(bts))

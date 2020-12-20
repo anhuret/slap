@@ -1,6 +1,7 @@
 package slap
 
 import (
+	"fmt"
 	"log"
 	"reflect"
 	"strings"
@@ -34,7 +35,7 @@ func (p *Store) Create(data interface{}) ([]string, error) {
 	ids := []string{}
 	val := reflect.ValueOf(data)
 	if val.Type().Kind() != reflect.Ptr {
-		return ids, ErrInvalidParameter
+		return ids, fmt.Errorf("Create: %w", ErrInvalidParameter)
 	}
 	ind := reflect.Indirect(val)
 	kin := ind.Type().Kind()
@@ -43,17 +44,17 @@ func (p *Store) Create(data interface{}) ([]string, error) {
 	case reflect.Struct:
 		s, err := model(ind.Interface(), false)
 		if err != nil {
-			return ids, err
+			return ids, fmt.Errorf("Create: %w", err)
 		}
 
 		v, err := s.values(ind.Interface())
 		if err != nil {
-			return ids, err
+			return ids, fmt.Errorf("Create: %w", err)
 		}
 
 		id, err := p.create(s, v)
 		if err != nil {
-			return ids, err
+			return ids, fmt.Errorf("Create: %w", err)
 		}
 
 		return append(ids, id), nil
@@ -63,25 +64,25 @@ func (p *Store) Create(data interface{}) ([]string, error) {
 		}
 		s, err := model(ind.Index(0).Interface(), false)
 		if err != nil {
-			return ids, err
+			return ids, fmt.Errorf("Create: %w", err)
 		}
 
 		var v vals
 		for i := 0; i < ind.Len(); i++ {
 			v, err = s.values(ind.Index(i).Interface())
 			if err != nil {
-				return ids, err
+				return ids, fmt.Errorf("Create: %w", err)
 			}
 
 			id, err := p.create(s, v)
 			if err != nil {
-				return ids, err
+				return ids, fmt.Errorf("Create: %w", err)
 			}
 
 			ids = append(ids, id)
 		}
 	default:
-		return ids, ErrInvalidParameter
+		return ids, fmt.Errorf("Create: %w", ErrInvalidParameter)
 
 	}
 	return ids, nil
@@ -92,7 +93,7 @@ func (p *Store) Create(data interface{}) ([]string, error) {
 func (p *Store) Delete(data interface{}, ids ...string) error {
 	s, err := model(data, true)
 	if err != nil {
-		return err
+		return fmt.Errorf("Delete: %w", err)
 	}
 
 	k := bow{
@@ -109,7 +110,7 @@ func (p *Store) Delete(data interface{}, ids ...string) error {
 				return nil
 			}
 			if err != nil {
-				return err
+				return fmt.Errorf("Update: %w", err)
 			}
 
 			for f := range s.fields {
@@ -118,20 +119,20 @@ func (p *Store) Delete(data interface{}, ids ...string) error {
 				if k.index {
 					i, err := txn.Get([]byte(k.fieldK()))
 					if err != nil {
-						return err
+						return fmt.Errorf("Update: %w", err)
 					}
 
 					err = i.Value(func(v []byte) error {
 						return txn.Delete([]byte(k.indexK(v)))
 					})
 					if err != nil {
-						return err
+						return fmt.Errorf("Update: %w", err)
 					}
 				}
 
 				err = txn.Delete([]byte(k.fieldK()))
 				if err != nil {
-					return err
+					return fmt.Errorf("Update: %w", err)
 				}
 			}
 			return txn.Delete([]byte(k.recordK()))
@@ -146,12 +147,12 @@ func (p *Store) Delete(data interface{}, ids ...string) error {
 func (p *Store) Update(data interface{}, ids ...string) error {
 	s, err := model(data, false)
 	if err != nil {
-		return err
+		return fmt.Errorf("Update: %w", err)
 	}
 
 	v, err := s.values(data)
 	if err != nil {
-		return err
+		return fmt.Errorf("Update: %w", err)
 	}
 
 	k := bow{
@@ -165,10 +166,10 @@ func (p *Store) Update(data interface{}, ids ...string) error {
 		err = p.db.Update(func(txn *badger.Txn) error {
 			_, err := txn.Get([]byte(k.recordK()))
 			if err == badger.ErrKeyNotFound {
-				return ErrNoRecord
+				return fmt.Errorf("Update: %w", ErrNoRecord)
 			}
 			if err != nil {
-				return err
+				return fmt.Errorf("Update: %w", err)
 			}
 
 			for f := range s.fields {
@@ -177,18 +178,18 @@ func (p *Store) Update(data interface{}, ids ...string) error {
 
 				bts, err := toBytes(v[f])
 				if err != nil {
-					return err
+					return fmt.Errorf("Update: %w", err)
 				}
 
 				if k.index {
 					err = txn.Set([]byte(k.indexK(bts)), []byte{0})
 					if err != nil {
-						return err
+						return fmt.Errorf("Update: %w", err)
 					}
 
 					i, err := txn.Get([]byte(k.fieldK()))
 					if err != nil && err != badger.ErrKeyNotFound {
-						return err
+						return fmt.Errorf("Update: %w", err)
 					}
 
 					if err == nil {
@@ -196,14 +197,14 @@ func (p *Store) Update(data interface{}, ids ...string) error {
 							return txn.Delete([]byte(k.indexK(v)))
 						})
 						if err != nil {
-							return err
+							return fmt.Errorf("Update: %w", err)
 						}
 					}
 				}
 
 				err = txn.Set([]byte(k.fieldK()), bts)
 				if err != nil {
-					return err
+					return fmt.Errorf("Update: %w", err)
 				}
 			}
 
@@ -211,7 +212,7 @@ func (p *Store) Update(data interface{}, ids ...string) error {
 		})
 
 		if err != nil {
-			return err
+			return fmt.Errorf("Update: %w", err)
 		}
 	}
 
@@ -224,7 +225,7 @@ func (p *Store) Read(data interface{}, ftr []string, ids ...string) ([]interface
 	rec := []interface{}{}
 	s, err := model(data, true)
 	if err != nil {
-		return rec, err
+		return rec, fmt.Errorf("Read: %w", err)
 	}
 
 	s.filter(ftr)
@@ -232,7 +233,7 @@ func (p *Store) Read(data interface{}, ftr []string, ids ...string) ([]interface
 	for _, id := range ids {
 		x, err := p.read(s, id)
 		if err != nil {
-			return rec, err
+			return rec, fmt.Errorf("Read: %w", err)
 		}
 		if x == nil {
 			return rec, nil
@@ -249,12 +250,12 @@ func (p *Store) Select(x interface{}, ftr []string) ([]interface{}, error) {
 	val := reflect.Indirect(reflect.ValueOf(x)).Interface()
 	ids, err := p.where(val)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Select: %w", err)
 	}
 
 	obs, err := p.Read(x, ftr, ids...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Select: %w", err)
 	}
 
 	return obs, nil
@@ -270,7 +271,7 @@ func (p *Store) Take(table interface{}, filter []string, seek string, limit int)
 	result := []interface{}{}
 	shape, err := model(table, true)
 	if err != nil {
-		return result, err
+		return result, fmt.Errorf("Take: %w", err)
 	}
 
 	shape.filter(filter)
@@ -323,19 +324,21 @@ func (p *Store) Take(table interface{}, filter []string, seek string, limit int)
 					continue
 				}
 				if err != nil {
-					return err
+					return fmt.Errorf("View: %w", err)
 				}
 
 				err = i.Value(func(v []byte) error {
 					x, err := fromBytes(v, t)
 					if err != nil {
-						return err
+						return fmt.Errorf("Value: %w", err)
 					}
+
 					obj.FieldByName(f).Set(reflect.ValueOf(x))
+
 					return nil
 				})
 				if err != nil {
-					return err
+					return fmt.Errorf("View: %w", err)
 				}
 			}
 
@@ -345,7 +348,7 @@ func (p *Store) Take(table interface{}, filter []string, seek string, limit int)
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Take: %w", err)
 	}
 
 	return result, nil

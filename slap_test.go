@@ -1,6 +1,7 @@
 package slap
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 	"time"
@@ -292,7 +293,7 @@ func TestCrud(t *testing.T) {
 		}
 
 		res, err = piv.Read(&some{}, []string{}, id[0])
-		if err != ErrNoRecord {
+		if !errors.Is(err, ErrNoRecord) {
 			t.Fatal("should display correct error")
 		}
 		if res == nil {
@@ -346,7 +347,7 @@ func TestCrud(t *testing.T) {
 
 		type s1 struct{ Name string }
 		m, err = model(&s1{}, true)
-		if err != ErrNoPrimaryID {
+		if !errors.Is(err, ErrNoPrimaryID) {
 			t.Fatal("must retuen correct error")
 		}
 	})

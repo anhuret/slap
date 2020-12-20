@@ -3,6 +3,7 @@ package slap
 import (
 	"bytes"
 	"encoding/gob"
+	"fmt"
 	"reflect"
 	"strings"
 	"time"
@@ -18,11 +19,11 @@ type shape struct {
 func model(x interface{}, z bool) (*shape, error) {
 	val := reflect.Indirect(reflect.ValueOf(x))
 	if val.Kind() != reflect.Struct {
-		return nil, ErrInvalidParameter
+		return nil, fmt.Errorf("model: %w", ErrInvalidParameter)
 	}
 
 	if !val.FieldByName("ID").IsValid() {
-		return nil, ErrNoPrimaryID
+		return nil, fmt.Errorf("model: %w", ErrNoPrimaryID)
 	}
 
 	typ := val.Type()
@@ -59,7 +60,7 @@ func model(x interface{}, z bool) (*shape, error) {
 func (s *shape) values(x interface{}) (vals, error) {
 	val := reflect.Indirect(reflect.ValueOf(x))
 	if val.Kind() != reflect.Struct {
-		return nil, ErrInvalidParameter
+		return nil, fmt.Errorf("values: %w", ErrInvalidParameter)
 	}
 
 	vls := make(vals)
@@ -105,11 +106,12 @@ func toBytes(x interface{}) ([]byte, error) {
 
 	err := enc.Encode(x)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("toBytes: %w", err)
 	}
 	return bts.Bytes(), nil
 
 }
+
 func fromBytes(bts []byte, t string) (interface{}, error) {
 	buf := bytes.NewReader(bts)
 	dec := gob.NewDecoder(buf)
@@ -119,53 +121,53 @@ func fromBytes(bts []byte, t string) (interface{}, error) {
 		var x string
 		err := dec.Decode(&x)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("fromBytes: %w", err)
 		}
 		return x, nil
 	case "int":
 		var x int
 		err := dec.Decode(&x)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("fromBytes: %w", err)
 		}
 		return x, nil
 	case "int64":
 		var x int64
 		err := dec.Decode(&x)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("fromBytes: %w", err)
 		}
 		return x, nil
 	case "float64":
 		var x float64
 		err := dec.Decode(&x)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("fromBytes: %w", err)
 		}
 		return x, nil
 	case "[]uint8":
 		var x []byte
 		err := dec.Decode(&x)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("fromBytes: %w", err)
 		}
 		return x, nil
 	case "bool":
 		var x bool
 		err := dec.Decode(&x)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("fromBytes: %w", err)
 		}
 		return x, nil
 	case "time.Time":
 		var x time.Time
 		err := dec.Decode(&x)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("fromBytes: %w", err)
 		}
 		return x, nil
 	default:
-		return nil, ErrInvalidParameter
+		return nil, fmt.Errorf("fromBytes: %w", ErrTypeConversion)
 	}
 }
 
