@@ -12,7 +12,7 @@ require (
 	github.com/golang/snappy v0.0.2 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rs/xid v1.2.1
-	golang.org/x/net v0.0.0-20201209123823-ac852fbbde11 // indirect
-	golang.org/x/sys v0.0.0-20201211090839-8ad439b19e0f // indirect
+	golang.org/x/net v0.0.0-20201224014010-6772e930b67b // indirect
+	golang.org/x/sys v0.0.0-20201223074533-0d417f636930 // indirect
 	google.golang.org/protobuf v1.25.0 // indirect
 )
