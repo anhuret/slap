@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/anhuret/gset"
-	"github.com/dgraph-io/badger/v2"
+	"github.com/dgraph-io/badger/v3"
 	"github.com/rs/xid"
 )
 
