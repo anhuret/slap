@@ -1,6 +1,6 @@
 module slap
 
-go 1.17
+go 1.18
 
 require (
 	github.com/anhuret/gset v1.0.1
